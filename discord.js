@@ -3,10 +3,10 @@
   const DISCORD_ID = '1487262222005567559';
 
   const STATUS_LABELS = {
-    online:  'En línea',
-    idle:    'Ausente',
-    dnd:     'No molestar',
-    offline: 'Desconectado',
+    online:  'Online',
+    idle:    'Idle',
+    dnd:     'Do Not Disturb',
+    offline: 'Offline',
   };
 
   const el = {
@@ -73,11 +73,11 @@
         const text = customAct.state || '';
 
         el.customEmoji.textContent = emoji;
-        el.customText.textContent  = text || 'Sin estado';
+        el.customText.textContent  = text || 'No status set';
         el.customWrap.style.opacity = '1';
       } else {
         el.customEmoji.textContent = '';
-        el.customText.textContent  = 'Sin estado';
+        el.customText.textContent  = 'No status set';
         el.customWrap.style.opacity = '0.45';
       }
 
