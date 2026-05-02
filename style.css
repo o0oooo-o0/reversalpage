@@ -104,9 +104,13 @@ html, body {
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
+  object-position: center;
   display: block;
   background: #2b2d31;
   transition: opacity 0.4s ease;
+  /* Force perfect circle clipping */
+  clip-path: circle(50% at 50% 50%);
+  -webkit-clip-path: circle(50% at 50% 50%);
 }
 
 /* Ring de color según estado */
