@@ -48,7 +48,9 @@
       color,
       alpha: 0,
       targetAlpha: 0.04 + Math.random() * 0.1,
-      width: 0.8 + Math.random() * 2.2,
+      baseWidth: 0.5 + Math.random() * 3.5,
+      widthAmp:  0.3 + Math.random() * 1.8,   // amplitude of thickness oscillation
+      widthFreq: 0.4 + Math.random() * 1.2,   // frequency
       speed: 0.0003 + Math.random() * 0.0006,
       offset: Math.random() * Math.PI * 2,
       parallaxX: (Math.random() - 0.5) * 80,
@@ -120,9 +122,12 @@
       const ox = l.parallaxX * px + wave;
       const oy = l.parallaxY * py + Math.cos(t * l.speed * 800 + l.offset) * 12;
 
+      // Animate thickness over time
+      const animWidth = l.baseWidth + Math.sin(t * l.widthFreq + l.offset) * l.widthAmp;
+
       const [r, g, b] = l.color;
       ctx.strokeStyle = `rgba(${r},${g},${b},${l.alpha.toFixed(3)})`;
-      ctx.lineWidth = l.width;
+      ctx.lineWidth = Math.max(0.2, animWidth);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
