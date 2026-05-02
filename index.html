@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>discord profile test</title>
 <style>
+    <style>
     body { font-family: sans-serif; background: #2c2f33; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; }
 
     .profile-card { position: relative; width: 150px; height: 150px; }
@@ -16,31 +17,41 @@
         background: #23272a;
     }
 
-    /* El contenedor del estado */
     .status-dot {
         position: absolute;
         bottom: 5px;
         right: 5px;
-        width: 40px;
-        height: 40px;
-        border: 6px solid #2c2f33; /* El color del fondo de tu web */
+        width: 38px;
+        height: 38px;
+        border: 6px solid #2c2f33; /* El color de tu fondo */
         border-radius: 50%;
-        background-color: #747f8d; /* Color por defecto */
+        background-color: #747f8d;
+        overflow: hidden; /* Importante para la luna */
     }
 
-    /* ESTADOS CON FORMAS */
+    /* --- ESTADOS --- */
 
-    /* Conectado: Círculo simple verde */
-    .status-dot.online { background-color: #43b581; mask: none; -webkit-mask: none; }
+    /* Conectado */
+    .status-dot.online { background-color: #43b581; }
 
-    /* Ausente: Forma de Luna */
+    /* Ausente (Luna) */
     .status-dot.idle {
         background-color: #faa61a;
-        -webkit-mask: radial-gradient(circle at 30% 30%, transparent 45%, black 46%);
-        mask: radial-gradient(circle at 30% 30%, transparent 45%, black 46%);
+        position: absolute;
+    }
+    /* El "hueco" de la luna */
+    .status-dot.idle::before {
+        content: "";
+        position: absolute;
+        top: -5px;   /* Ajusta esto para mover el hueco */
+        left: -5px;  /* Ajusta esto para mover el hueco */
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background-color: #2c2f33; /* El mismo color del outline/fondo */
     }
 
-    /* No molestar: Círculo con raya negra */
+    /* No molestar (DND) */
     .status-dot.dnd {
         background-color: #f04747;
         display: flex;
@@ -51,11 +62,11 @@
         content: "";
         width: 70%;
         height: 20%;
-        background-color: #2c2f33; /* Color del fondo de la web */
+        background-color: #2c2f33; /* El mismo color del outline/fondo */
         border-radius: 10px;
     }
 
-    /* Invisible / Offline: Círculo hueco */
+    /* Offline / Invisible */
     .status-dot.offline {
         background-color: #747f8d;
         display: flex;
@@ -66,7 +77,7 @@
         content: "";
         width: 45%;
         height: 45%;
-        background-color: #2c2f33; /* Color del fondo de la web */
+        background-color: #2c2f33; /* El mismo color del outline/fondo */
         border-radius: 50%;
     }
 </style>
