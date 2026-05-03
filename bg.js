@@ -1,194 +1,223 @@
-/* bg.js — Liquid parallax background (Canvas 2D) */
+/* bg.js — WebGL fluid shader, fully visible 3D liquid */
 (function () {
-  const canvas = document.getElementById('bg-canvas');
-  const ctx    = canvas.getContext('2d');
 
-  let W, H;
-  let mouse  = { x: 0.5, y: 0.5 };
-  let target = { x: 0.5, y: 0.5 };
+const canvas = document.getElementById('bg-canvas');
 
-  const PALETTE = [
-    [58,  120, 255],
-    [88,  101, 242],
-    [30,  80,  200],
-    [100, 160, 255],
-    [20,  50,  160],
-    [140, 180, 255],
-    [10,  40,  130],
-  ];
+/* Try WebGL2 first, fall back to WebGL1 */
+let gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 
-  let blobs = [];
-  let lines = [];
+if (!gl) {
+  canvas.style.background = 'linear-gradient(135deg,#0a0e1a,#0d1f4a,#0a0e1a)';
+  return;
+}
 
-  /* ── BLOBS ── */
-  function makeBlob() {
-    const [r,g,b] = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-    return {
-      x: Math.random() * W,
-      y: Math.random() * H,
-      vx: (Math.random() - 0.5) * 0.25,
-      vy: (Math.random() - 0.5) * 0.25,
-      radius: 140 + Math.random() * 260,
-      alpha: 0.055 + Math.random() * 0.085,
-      r, g, b,
-      px: (Math.random() - 0.5) * 100,
-      py: (Math.random() - 0.5) * 100,
-      phase: Math.random() * Math.PI * 2,
-      phaseSpeed: 0.003 + Math.random() * 0.007,
-    };
+let W, H;
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  gl.viewport(0, 0, W, H);
+}
+resize();
+window.addEventListener('resize', resize);
+
+/* ── Compile shader ── */
+function sh(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+    console.error(gl.getShaderInfoLog(s));
+  return s;
+}
+
+function prog(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, sh(gl.VERTEX_SHADER,   vs));
+  gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  return p;
+}
+
+const VS = `
+attribute vec2 p;
+void main(){ gl_Position = vec4(p,0,1); }
+`;
+
+/* ─────────────────────────────────────────────────────────
+   FRAGMENT SHADER
+   Procedural 3D liquid using:
+   - layered fbm noise for height field
+   - analytical normals from height gradient
+   - Blinn-Phong specular
+   - Fresnel
+   - animated mouse-driven warp
+   ───────────────────────────────────────────────────────── */
+const FS = `
+precision highp float;
+
+uniform vec2  uRes;
+uniform float uTime;
+uniform vec2  uMouse;   /* 0..1 */
+
+/* ── Hash & noise ── */
+vec2 hash2(vec2 p){
+  p = vec2(dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)));
+  return fract(sin(p)*43758.5453);
+}
+
+float valueNoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f*f*(3.0-2.0*f);
+  float a = fract(sin(dot(i,              vec2(127.1,311.7)))*43758.5453);
+  float b = fract(sin(dot(i+vec2(1,0),    vec2(127.1,311.7)))*43758.5453);
+  float c = fract(sin(dot(i+vec2(0,1),    vec2(127.1,311.7)))*43758.5453);
+  float d = fract(sin(dot(i+vec2(1,1),    vec2(127.1,311.7)))*43758.5453);
+  return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
+}
+
+/* ── fBm (fractal Brownian motion) — gives liquid depth ── */
+float fbm(vec2 p){
+  float v=0.0, a=0.5;
+  mat2 rot = mat2(cos(0.5),sin(0.5),-sin(0.5),cos(0.5));
+  for(int i=0;i<6;i++){
+    v += a * valueNoise(p);
+    p  = rot * p * 2.1;
+    a *= 0.48;
   }
+  return v;
+}
 
-  /* ── LINES ── */
-  function makeLine() {
-    const [r,g,b] = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-    const segs = 5 + Math.floor(Math.random() * 5);
-    const pts  = [];
-    let cx = Math.random() * W;
-    let cy = Math.random() * H;
-    for (let i = 0; i <= segs; i++) {
-      pts.push({ x: cx, y: cy });
-      cx += (Math.random() - 0.5) * W * 0.55;
-      cy += (Math.random() - 0.5) * H * 0.55;
-    }
-    return {
-      pts, r, g, b,
-      alpha: 0,
-      targetAlpha: 0.06 + Math.random() * 0.12,
-      baseW: 0.6 + Math.random() * 3.5,
-      wAmp:  0.4 + Math.random() * 1.8,
-      wFreq: 0.3 + Math.random() * 1.2,
-      offset: Math.random() * Math.PI * 2,
-      px: (Math.random() - 0.5) * 80,
-      py: (Math.random() - 0.5) * 80,
-      life: 0,
-      maxLife: 280 + Math.random() * 450,
-    };
-  }
+/* ── Domain-warped fbm = realistic fluid swirl ── */
+float liquidHeight(vec2 uv, float t){
+  /* Slow primary flow */
+  vec2 flow = vec2(
+    fbm(uv + vec2(t*0.09, t*0.07)),
+    fbm(uv + vec2(t*0.07, t*0.11) + vec2(5.2,1.3))
+  );
+  /* Secondary warp layer */
+  vec2 warp = vec2(
+    fbm(uv + 2.5*flow + vec2(1.7, 9.2) + t*0.06),
+    fbm(uv + 2.5*flow + vec2(8.3, 2.8) + t*0.04)
+  );
+  return fbm(uv + 2.0*warp);
+}
 
-  function resize() {
-    W = canvas.width  = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-    blobs = Array.from({ length: 12 }, makeBlob);
-    lines = Array.from({ length: Math.max(14, Math.floor(W * H / 65000)) }, () => {
-      const l = makeLine();
-      l.life = Math.random() * l.maxLife;
-      return l;
-    });
-  }
+/* ── Analytical normal from height (finite diff) ── */
+vec3 getNormal(vec2 uv, float t){
+  float eps = 0.004;
+  float hC = liquidHeight(uv,           t);
+  float hR = liquidHeight(uv+vec2(eps,0),t);
+  float hU = liquidHeight(uv+vec2(0,eps),t);
+  vec3  N  = normalize(vec3((hC-hR)*28.0, (hC-hU)*28.0, 1.0));
+  return N;
+}
 
-  function drawCurve(pts, ox, oy) {
-    if (pts.length < 2) return;
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x + ox, pts[0].y + oy);
-    for (let i = 1; i < pts.length - 1; i++) {
-      const mx = (pts[i].x + pts[i+1].x) / 2;
-      const my = (pts[i].y + pts[i+1].y) / 2;
-      ctx.quadraticCurveTo(pts[i].x + ox, pts[i].y + oy, mx + ox, my + oy);
-    }
-    const last = pts[pts.length - 1];
-    ctx.lineTo(last.x + ox, last.y + oy);
-  }
+void main(){
+  vec2 uv  = gl_FragCoord.xy / uRes;
+  vec2 asp = vec2(uRes.x/uRes.y, 1.0);
 
-  function draw(ts) {
-    ctx.clearRect(0, 0, W, H);
+  /* Slow zoom/pan */
+  float t   = uTime * 0.38;
+  vec2  sUV = (uv - 0.5) * asp * 2.2 + 0.5;
 
-    const t  = ts * 0.001;
-    const px = (mouse.x - 0.5) * 2;
-    const py = (mouse.y - 0.5) * 2;
+  /* Mouse pulls the fluid */
+  vec2  mOff = (uMouse - 0.5) * 0.35;
+  sUV += mOff * smoothstep(1.5, 0.0, length((uv-0.5)*asp)*2.0);
 
-    /* ── BLOBS ── */
-    for (const b of blobs) {
-      b.phase += b.phaseSpeed;
+  /* ── Height field ── */
+  float h = liquidHeight(sUV * 1.8, t);
 
-      // Drift
-      b.x += b.vx + Math.sin(b.phase * 0.7) * 0.4;
-      b.y += b.vy + Math.cos(b.phase * 0.55) * 0.4;
+  /* ── Normal ── */
+  vec3 N = getNormal(sUV * 1.8, t);
 
-      // Wrap
-      if (b.x < -b.radius) b.x = W + b.radius;
-      if (b.x > W + b.radius) b.x = -b.radius;
-      if (b.y < -b.radius) b.y = H + b.radius;
-      if (b.y > H + b.radius) b.y = -b.radius;
+  /* ── Lighting ── */
+  vec3 L  = normalize(vec3(0.5, 0.8, 1.4));   /* key light */
+  vec3 L2 = normalize(vec3(-0.7, -0.3, 1.0)); /* fill light */
+  vec3 V  = vec3(0.0, 0.0, 1.0);
 
-      // Parallax offset
-      const ox = b.px * px + Math.sin(b.phase * 0.6) * 20;
-      const oy = b.py * py + Math.cos(b.phase * 0.5) * 20;
+  float diff  = max(dot(N, L),  0.0);
+  float diff2 = max(dot(N, L2), 0.0) * 0.3;
 
-      // Pulsing, slightly elliptical (liquid feel)
-      const pulse  = b.radius * (1 + Math.sin(b.phase * 0.9) * 0.1);
-      const scaleY = 0.82 + Math.sin(b.phase * 0.7) * 0.12;
+  /* Blinn-Phong specular */
+  vec3  H1   = normalize(L + V);
+  float spec = pow(max(dot(N, H1), 0.0), 180.0) * 2.2;
 
-      ctx.save();
-      ctx.translate(b.x + ox, b.y + oy);
-      ctx.scale(1, scaleY);
+  /* Fresnel */
+  float fres = pow(1.0 - abs(dot(N, V)), 3.8);
 
-      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, pulse);
-      grad.addColorStop(0,    `rgba(${b.r},${b.g},${b.b},${(b.alpha * 1.4).toFixed(3)})`);
-      grad.addColorStop(0.45, `rgba(${b.r},${b.g},${b.b},${b.alpha.toFixed(3)})`);
-      grad.addColorStop(1,    `rgba(${b.r},${b.g},${b.b},0)`);
+  /* ── Color ── */
+  /* Deep base: very dark navy */
+  vec3 colDeep  = vec3(0.01, 0.03, 0.10);
+  /* Mid water: rich blue */
+  vec3 colMid   = vec3(0.04, 0.14, 0.48);
+  /* Surface crest: bright cyan-blue */
+  vec3 colCrest = vec3(0.18, 0.52, 1.00);
+  /* Specular: near-white blue */
+  vec3 colSpec  = vec3(0.80, 0.92, 1.00);
 
-      ctx.beginPath();
-      ctx.arc(0, 0, pulse, 0, Math.PI * 2);
-      ctx.fillStyle = grad;
-      ctx.fill();
+  /* Mix by height & lighting */
+  vec3 col = mix(colDeep, colMid,   smoothstep(0.0, 0.55, h));
+       col = mix(col,     colCrest, smoothstep(0.45, 1.0, h) * 0.7);
+       col += diff  * colCrest * 0.45;
+       col += diff2 * colMid   * 0.2;
+       col += spec  * colSpec;
+       col += fres  * vec3(0.12, 0.35, 0.90) * 0.7;
 
-      // Specular highlight — small bright spot top-left of each blob
-      const specR = pulse * 0.28;
-      const specX = -pulse * 0.28;
-      const specY = -pulse * 0.28;
-      const specGrad = ctx.createRadialGradient(specX, specY, 0, specX, specY, specR);
-      specGrad.addColorStop(0, `rgba(200,225,255,${(b.alpha * 1.8).toFixed(3)})`);
-      specGrad.addColorStop(1, `rgba(200,225,255,0)`);
-      ctx.beginPath();
-      ctx.arc(specX, specY, specR, 0, Math.PI * 2);
-      ctx.fillStyle = specGrad;
-      ctx.fill();
+  /* Subsurface scatter at crests */
+  col += smoothstep(0.6, 1.0, h) * vec3(0.0, 0.18, 0.55) * 0.6;
 
-      ctx.restore();
-    }
+  /* Vignette */
+  float vig = 1.0 - smoothstep(0.45, 1.0, length((uv - 0.5) * 1.4));
+  col *= 0.25 + 0.75 * vig;
 
-    /* ── LINES ── */
-    for (const l of lines) {
-      l.life++;
-      const prog = l.life / l.maxLife;
-      if      (prog < 0.15) l.alpha = l.targetAlpha * (prog / 0.15);
-      else if (prog < 0.75) l.alpha = l.targetAlpha;
-      else                  l.alpha = l.targetAlpha * (1 - (prog - 0.75) / 0.25);
-      if (l.life >= l.maxLife) { Object.assign(l, makeLine()); continue; }
+  /* Boost overall brightness so it's clearly visible */
+  col = pow(col * 1.6, vec3(0.88));
 
-      const wave = Math.sin(t * l.wFreq * 2 + l.offset) * 20;
-      const ox   = l.px * px + wave;
-      const oy   = l.py * py + Math.cos(t * l.wFreq * 1.5 + l.offset) * 14;
-      const animW = Math.max(0.3, l.baseW + Math.sin(t * l.wFreq + l.offset) * l.wAmp);
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
 
-      ctx.strokeStyle = `rgba(${l.r},${l.g},${l.b},${l.alpha.toFixed(3)})`;
-      ctx.lineWidth   = animW;
-      ctx.lineCap     = 'round';
-      ctx.lineJoin    = 'round';
-      drawCurve(l.pts, ox, oy);
-      ctx.stroke();
-    }
+const program = prog(VS, FS);
+gl.useProgram(program);
 
-    requestAnimationFrame(draw);
-  }
+/* Full-screen triangle */
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+const aP = gl.getAttribLocation(program, 'p');
+gl.enableVertexAttribArray(aP);
+gl.vertexAttribPointer(aP, 2, gl.FLOAT, false, 0, 0);
 
-  /* ── Mouse lerp ── */
-  window.addEventListener('mousemove', e => {
-    target.x = e.clientX / W;
-    target.y = e.clientY / H;
-  });
-  window.addEventListener('touchmove', e => {
-    target.x = e.touches[0].clientX / W;
-    target.y = e.touches[0].clientY / H;
-  }, { passive: true });
+const uRes   = gl.getUniformLocation(program, 'uRes');
+const uTime  = gl.getUniformLocation(program, 'uTime');
+const uMouse = gl.getUniformLocation(program, 'uMouse');
 
-  (function lerpMouse() {
-    mouse.x += (target.x - mouse.x) * 0.05;
-    mouse.y += (target.y - mouse.y) * 0.05;
-    requestAnimationFrame(lerpMouse);
-  })();
+let mx = 0.5, my = 0.5, tmx = 0.5, tmy = 0.5;
 
-  window.addEventListener('resize', resize);
-  resize();
-  requestAnimationFrame(draw);
+window.addEventListener('mousemove', e => {
+  tmx = e.clientX / W;
+  tmy = 1.0 - e.clientY / H;
+});
+window.addEventListener('touchmove', e => {
+  tmx = e.touches[0].clientX / W;
+  tmy = 1.0 - e.touches[0].clientY / H;
+}, { passive: true });
+
+const t0 = performance.now();
+
+(function frame() {
+  mx += (tmx - mx) * 0.04;
+  my += (tmy - my) * 0.04;
+
+  const t = (performance.now() - t0) * 0.001;
+
+  gl.uniform2f(uRes,   W, H);
+  gl.uniform1f(uTime,  t);
+  gl.uniform2f(uMouse, mx, my);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  requestAnimationFrame(frame);
+})();
+
 })();
