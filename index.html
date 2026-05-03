@@ -163,10 +163,14 @@
 
     /* Badge imagen al lado del username */
     .username-badge {
-      width: 22px; height: 22px;
+      height: 26px;
+      width: auto;
+      max-width: 110px;
       object-fit: contain;
+      object-position: center top;
       flex-shrink: 0;
-      filter: drop-shadow(0 0 4px rgba(79,127,255,0.6));
+      filter: drop-shadow(0 0 6px rgba(79,127,255,0.7));
+      display: block;
     }
 
     .custom-status {
@@ -250,6 +254,86 @@
     }
     .footer-text a:hover { color: #7ab4ff; }
 
+    /* ── MUSIC PLAYER ── */
+    .music-player {
+      position: fixed; top: 1.2rem; left: 1.2rem; z-index: 30;
+      display: flex; align-items: center; gap: 0.7rem;
+      padding: 0.6rem 1rem;
+      background: rgba(14, 22, 45, 0.82);
+      border: 1px solid rgba(79,127,255,0.18);
+      border-radius: 100px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: none; /* JS lerp */
+    }
+
+    .music-btn {
+      background: none; border: none; cursor: pointer;
+      color: #7ab4ff; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      transition: color 0.2s, background 0.2s;
+    }
+    .music-btn:hover { color: #b8d8ff; background: rgba(79,127,255,0.12); }
+    .music-btn svg { width: 16px; height: 16px; }
+
+    .music-info {
+      display: flex; flex-direction: column; gap: 1px;
+      max-width: 130px;
+    }
+    .music-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.68rem; color: #a8c8ff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .music-sub {
+      font-size: 0.62rem; color: var(--muted);
+    }
+
+    .music-vol-wrap {
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .music-vol {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 60px; height: 3px;
+      border-radius: 2px;
+      background: rgba(79,127,255,0.25);
+      outline: none; cursor: pointer;
+    }
+    .music-vol::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      background: #5888ff;
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(79,127,255,0.6);
+    }
+
+    /* ── RIPPLE CANVAS ── */
+    #ripple-canvas {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      z-index: 1; pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    /* ── FOOTER ICONS ── */
+    .footer-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      vertical-align: middle;
+      width: 22px; height: 22px;
+      margin: 0 0.3rem;
+      opacity: 0.65;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .footer-icon:hover { opacity: 1; transform: scale(1.2); }
+    .footer-icon svg { width: 18px; height: 18px; }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 500px) {
       .main { padding-top: 12vh; }
@@ -262,6 +346,23 @@
 <body>
 
   <canvas id="bg-canvas"></canvas>
+  <canvas id="ripple-canvas"></canvas>
+
+  <!-- Music Player -->
+  <div class="music-player" id="music-player">
+    <button class="music-btn" id="play-btn" title="Play/Pause">
+      <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <div class="music-info">
+      <span class="music-title">strangers</span>
+      <span class="music-sub">now playing</span>
+    </div>
+    <div class="music-vol-wrap">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="#7ab4ff" style="flex-shrink:0"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+      <input class="music-vol" type="range" id="vol-slider" min="0" max="100" value="40" />
+    </div>
+    <audio id="audio" src="strangers.mp3" preload="auto"></audio>
+  </div>
 
   <main class="main">
     <div class="card" id="profile-card">
@@ -301,7 +402,15 @@
 
   <footer class="footer" id="footer">
     <p class="footer-text">
+      <!-- YouTube icon — blue tint -->
+      <a href="https://www.youtube.com/@f3kel6666" target="_blank" class="footer-icon" title="YouTube">
+        <svg viewBox="0 0 24 24" fill="#4f7fff"><path d="M21.8 8s-.2-1.4-.8-2c-.8-.8-1.6-.8-2-.9C16.8 5 12 5 12 5s-4.8 0-7 .1c-.4.1-1.2.1-2 .9-.6.6-.8 2-.8 2S2 9.6 2 11.2v1.5c0 1.6.2 3.2.2 3.2s.2 1.4.8 2c.8.8 1.8.7 2.3.8C6.8 18.9 12 19 12 19s4.8 0 7-.2c.4-.1 1.2-.1 2-.9.6-.6.8-2 .8-2s.2-1.6.2-3.2v-1.5C22 9.6 21.8 8 21.8 8zM9.7 14.5V9l5.4 2.8-5.4 2.7z"/></svg>
+      </a>
       page by f3kel666. founder of <a href="https://reversal.lat" target="_blank">reversal.lat</a> | <a href="https://discord.gg/f3k" target="_blank">discord.gg/f3k</a> and <a href="https://f3kel.lol" target="_blank">f3kel.lol</a>
+      <!-- Discord icon -->
+      <a href="https://discord.gg/f3k" target="_blank" class="footer-icon" title="Discord">
+        <svg viewBox="0 0 24 24" fill="#7289da"><path d="M20.3 4.4A19.7 19.7 0 0 0 15.5 3c-.2.4-.5.9-.6 1.3a18.3 18.3 0 0 0-5.8 0C8.9 3.9 8.6 3.4 8.4 3A19.6 19.6 0 0 0 3.6 4.4C.5 9.1-.3 13.7.1 18.2a19.9 19.9 0 0 0 6 3.1c.5-.7.9-1.4 1.3-2.1-.7-.3-1.4-.6-2-1 .2-.1.3-.2.5-.3a14.2 14.2 0 0 0 12.2 0l.5.3c-.6.4-1.3.7-2 1 .4.7.8 1.4 1.3 2.1a19.8 19.8 0 0 0 6-3.1c.5-5.2-.8-9.7-3.6-13.8zM8 15.5c-1.2 0-2.3-1.2-2.3-2.6 0-1.4 1-2.6 2.3-2.6 1.2 0 2.3 1.2 2.3 2.6 0 1.4-1 2.6-2.3 2.6zm7.9 0c-1.2 0-2.3-1.2-2.3-2.6 0-1.4 1-2.6 2.3-2.6 1.2 0 2.3 1.2 2.3 2.6 0 1.4-1 2.6-2.3 2.6z"/></svg>
+      </a>
     </p>
   </footer>
 
@@ -309,34 +418,147 @@
   <script src="discord.js"></script>
   <script src="typewriter.js"></script>
   <script>
-    // Footer lerp — smooth ease-in like Roblox TweenService
-    (function() {
-      const footer = document.getElementById('footer');
-      let currentY   = 60;
-      let currentOpa = 0;
-      let targetY    = 0;
-      let targetOpa  = 1;
-      const LERP = 0.055; // smoothness — lower = slower/smoother
+  (function() {
+    function lerp(a, b, t) { return a + (b - a) * t; }
 
-      // Delay before footer starts appearing
-      setTimeout(() => {
-        targetY   = 0;
-        targetOpa = 1;
-      }, 2200);
-
-      function lerp(a, b, t) { return a + (b - a) * t; }
-
-      function tick() {
-        currentY   = lerp(currentY,   targetY,   LERP);
-        currentOpa = lerp(currentOpa, targetOpa, LERP);
-
-        footer.style.transform = `translateY(${currentY.toFixed(3)}px)`;
-        footer.style.opacity   = currentOpa.toFixed(4);
-
-        requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
+    /* ── FOOTER LERP ── */
+    const footer = document.getElementById('footer');
+    let fY = 60, fO = 0, ftY = 0, ftO = 1;
+    setTimeout(() => { ftY = 0; ftO = 1; }, 2200);
+    (function tickFooter() {
+      fY = lerp(fY, ftY, 0.055);
+      fO = lerp(fO, ftO, 0.055);
+      footer.style.transform = `translateY(${fY.toFixed(3)}px)`;
+      footer.style.opacity = fO.toFixed(4);
+      requestAnimationFrame(tickFooter);
     })();
+
+    /* ── MUSIC PLAYER LERP ── */
+    const player = document.getElementById('music-player');
+    let pY = -20, pO = 0, ptY = 0, ptO = 1;
+    setTimeout(() => { ptY = 0; ptO = 1; }, 1800);
+    (function tickPlayer() {
+      pY = lerp(pY, ptY, 0.06);
+      pO = lerp(pO, ptO, 0.06);
+      player.style.transform = `translateY(${pY.toFixed(3)}px)`;
+      player.style.opacity = pO.toFixed(4);
+      requestAnimationFrame(tickPlayer);
+    })();
+
+    /* ── MUSIC CONTROLS ── */
+    const audio     = document.getElementById('audio');
+    const playBtn   = document.getElementById('play-btn');
+    const playIcon  = document.getElementById('play-icon');
+    const volSlider = document.getElementById('vol-slider');
+
+    const ICON_PLAY  = '<path d="M8 5v14l11-7z"/>';
+    const ICON_PAUSE = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+
+    audio.volume = 0.4;
+
+    playBtn.addEventListener('click', () => {
+      if (audio.paused) {
+        audio.play();
+        playIcon.innerHTML = ICON_PAUSE;
+      } else {
+        audio.pause();
+        playIcon.innerHTML = ICON_PLAY;
+      }
+    });
+
+    volSlider.addEventListener('input', () => {
+      audio.volume = volSlider.value / 100;
+    });
+
+    audio.addEventListener('ended', () => {
+      playIcon.innerHTML = ICON_PLAY;
+    });
+
+    /* ── RIPPLE / 3D LIQUID SURFACE DISTURBANCE ── */
+    const rc   = document.getElementById('ripple-canvas');
+    const rctx = rc.getContext('2d');
+    let RW, RH;
+
+    function resizeRipple() { RW = rc.width = window.innerWidth; RH = rc.height = window.innerHeight; }
+    resizeRipple();
+    window.addEventListener('resize', resizeRipple);
+
+    const ripples = [];
+
+    function spawnRipple(x, y, strength) {
+      const s = strength || 1;
+      // Multiple rings per splash for realistic water
+      const rings = 2 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < rings; i++) {
+        ripples.push({
+          x, y,
+          r: i * 6,
+          maxR: (55 + Math.random() * 45) * s,
+          alpha: (0.22 + Math.random() * 0.12) * s,
+          speed: (1.4 + Math.random() * 1.0) * (1 - i * 0.15),
+          lineW: 1.5 - i * 0.3,
+          // Specular highlight angle
+          specAngle: Math.random() * Math.PI * 2,
+        });
+      }
+    }
+
+    let lastX = -1, lastY = -1;
+    window.addEventListener('mousemove', e => {
+      const dx = e.clientX - lastX, dy = e.clientY - lastY;
+      const dist2 = dx*dx + dy*dy;
+      if (dist2 > 300) {
+        const strength = Math.min(1.5, Math.sqrt(dist2) / 30);
+        spawnRipple(e.clientX, e.clientY, strength);
+        lastX = e.clientX; lastY = e.clientY;
+      }
+    });
+    window.addEventListener('touchmove', e => {
+      spawnRipple(e.touches[0].clientX, e.touches[0].clientY, 1);
+    }, { passive: true });
+
+    (function tickRipple() {
+      rctx.clearRect(0, 0, RW, RH);
+
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        const rp = ripples[i];
+        rp.r += rp.speed;
+        const prog = rp.r / rp.maxR;
+        if (prog >= 1) { ripples.splice(i, 1); continue; }
+
+        // Ease out opacity
+        const a = rp.alpha * (1 - prog * prog);
+
+        // ── Main ring ──
+        rctx.beginPath();
+        rctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+        rctx.strokeStyle = `rgba(100,160,255,${(a * 0.6).toFixed(3)})`;
+        rctx.lineWidth = rp.lineW * (1 + (1 - prog) * 1.5);
+        rctx.stroke();
+
+        // ── Specular highlight arc (bright spot on ring = 3D illusion) ──
+        const arcLen = Math.PI * 0.25 * (1 - prog * 0.5);
+        rctx.beginPath();
+        rctx.arc(rp.x, rp.y, rp.r, rp.specAngle - arcLen, rp.specAngle + arcLen);
+        const specA = a * 2.5;
+        rctx.strokeStyle = `rgba(200,230,255,${Math.min(1, specA).toFixed(3)})`;
+        rctx.lineWidth = rp.lineW * 2.2;
+        rctx.stroke();
+
+        // ── Inner glow fill (subsurface scatter illusion) ──
+        if (prog < 0.5 && rp.r > 4) {
+          const grad = rctx.createRadialGradient(rp.x, rp.y, rp.r * 0.6, rp.x, rp.y, rp.r);
+          grad.addColorStop(0, `rgba(60,120,255,0)`);
+          grad.addColorStop(1, `rgba(80,140,255,${(a * 0.08).toFixed(3)})`);
+          rctx.beginPath();
+          rctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+          rctx.fillStyle = grad;
+          rctx.fill();
+        }
+      }
+      requestAnimationFrame(tickRipple);
+    })();
+  })();
   </script>
 </body>
 </html>
