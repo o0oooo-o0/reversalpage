@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>F3 — Profile</title>
+  <title>F3kel666</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
@@ -348,12 +348,236 @@
     .footer-icon:hover { opacity: 1; transform: scale(1.2); }
     .footer-icon svg { width: 18px; height: 18px; }
 
+    /* ── ABOUT BUTTON ── */
+    .about-btn-wrap {
+      margin-top: 2rem;
+      opacity: 0;
+      animation: slideIn 0.5s ease 2s forwards;
+    }
+
+    .about-btn {
+      position: relative;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.82rem;
+      color: rgba(168, 200, 255, 0.9);
+      letter-spacing: 0.06em;
+      background: rgba(10, 20, 50, 0.55);
+      border: 1px solid rgba(79, 127, 255, 0.30);
+      border-radius: 100px;
+      padding: 0.6rem 1.5rem;
+      cursor: pointer;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.04) inset,
+        0 4px 24px rgba(0,0,0,0.35),
+        0 0 28px rgba(79,127,255,0.08);
+      transition: color 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+      overflow: hidden;
+    }
+
+    /* Shimmer sweep on hover */
+    .about-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg,
+        transparent 35%,
+        rgba(100,160,255,0.14) 50%,
+        transparent 65%);
+      transform: translateX(-100%);
+      transition: transform 0.5s ease;
+      border-radius: inherit;
+    }
+    .about-btn:hover::before { transform: translateX(100%); }
+    .about-btn:hover {
+      color: #c8deff;
+      border-color: rgba(100, 160, 255, 0.55);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.06) inset,
+        0 4px 32px rgba(0,0,0,0.45),
+        0 0 40px rgba(79,127,255,0.22);
+      transform: translateY(-2px);
+    }
+    .about-btn:active { transform: scale(0.97) translateY(0); }
+
+    /* Pulse ring */
+    .about-btn::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: inherit;
+      border: 1.5px solid rgba(79,127,255,0.25);
+      animation: btnPulse 2.8s ease-out infinite;
+    }
+    @keyframes btnPulse {
+      0%   { opacity: 0.8; transform: scale(1); }
+      100% { opacity: 0;   transform: scale(1.35); }
+    }
+
+    /* Button hide animation */
+    .about-btn-wrap.hiding {
+      animation: btnHide 0.55s cubic-bezier(0.4,0,0.2,1) forwards;
+    }
+    @keyframes btnHide {
+      0%   { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+      60%  { opacity: 0.3; transform: scale(1.08) translateY(-8px); filter: blur(2px); }
+      100% { opacity: 0; transform: scale(0.85) translateY(-20px); filter: blur(8px); pointer-events: none; }
+    }
+
+    /* ── ABOUT OVERLAY ── */
+    #about-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: rgba(2, 6, 18, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.45s ease;
+    }
+    #about-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* ── ABOUT CARD ── */
+    .about-card {
+      position: relative;
+      width: min(560px, 100%);
+      max-height: 85vh;
+      overflow-y: auto;
+      background: rgba(8, 16, 40, 0.72);
+      border: 1px solid rgba(79, 127, 255, 0.20);
+      border-radius: 22px;
+      backdrop-filter: blur(36px) saturate(180%);
+      -webkit-backdrop-filter: blur(36px) saturate(180%);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.05) inset,
+        0 32px 80px rgba(0,0,0,0.7),
+        0 0 60px rgba(40,80,200,0.12);
+      padding: 2.4rem 2.4rem 2rem;
+      opacity: 0;
+      transform: translateY(28px) scale(0.96);
+      transition: opacity 0.5s cubic-bezier(0.34,1.2,0.64,1), transform 0.5s cubic-bezier(0.34,1.2,0.64,1);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(79,127,255,0.3) transparent;
+    }
+    .about-card::-webkit-scrollbar { width: 4px; }
+    .about-card::-webkit-scrollbar-track { background: transparent; }
+    .about-card::-webkit-scrollbar-thumb { background: rgba(79,127,255,0.3); border-radius: 2px; }
+
+    #about-overlay.visible .about-card {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* Top accent line */
+    .about-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 12%; width: 76%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(100,160,255,0.35), transparent);
+    }
+
+    /* Close button */
+    .about-close {
+      position: absolute;
+      top: 1rem; right: 1rem;
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: rgba(79,127,255,0.10);
+      border: 1px solid rgba(79,127,255,0.18);
+      color: rgba(150,190,255,0.7);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; line-height: 1;
+      transition: background 0.2s, color 0.2s, transform 0.2s;
+    }
+    .about-close:hover {
+      background: rgba(79,127,255,0.22);
+      color: #c0d8ff;
+      transform: rotate(90deg);
+    }
+
+    /* Title */
+    .about-title {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(1.4rem, 5vw, 1.85rem);
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.6rem;
+      background: linear-gradient(120deg, #b0ccff, #6090ff, #2050e8, #7aadff, #b0ccff);
+      background-size: 300% 300%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradShift 4s ease infinite;
+    }
+
+    /* Sections */
+    .about-section {
+      margin-bottom: 1.1rem;
+      padding: 1rem 1.15rem;
+      background: rgba(15, 28, 65, 0.50);
+      border: 1px solid rgba(79,127,255,0.10);
+      border-radius: 14px;
+      /* stagger entrance */
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    #about-overlay.visible .about-section:nth-child(1) { transition-delay: 0.10s; opacity:1; transform:none; }
+    #about-overlay.visible .about-section:nth-child(2) { transition-delay: 0.18s; opacity:1; transform:none; }
+    #about-overlay.visible .about-section:nth-child(3) { transition-delay: 0.26s; opacity:1; transform:none; }
+    #about-overlay.visible .about-section:nth-child(4) { transition-delay: 0.34s; opacity:1; transform:none; }
+    #about-overlay.visible .about-section:nth-child(5) { transition-delay: 0.42s; opacity:1; transform:none; }
+
+    .about-section p {
+      font-size: clamp(0.8rem, 2.2vw, 0.9rem);
+      color: rgba(185, 210, 255, 0.82);
+      line-height: 1.75;
+      font-weight: 300;
+    }
+
+    /* Inline accent links/tags */
+    .about-section .tag {
+      display: inline-block;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      color: rgba(120,170,255,0.9);
+      background: rgba(79,127,255,0.12);
+      border: 1px solid rgba(79,127,255,0.20);
+      border-radius: 6px;
+      padding: 0.05rem 0.4rem;
+      margin: 0 1px;
+      vertical-align: middle;
+    }
+
+    .about-section .friend {
+      display: inline-block;
+      font-size: 0.78rem;
+      color: rgba(150,200,255,0.85);
+      background: rgba(40,80,180,0.15);
+      border: 1px solid rgba(79,127,255,0.15);
+      border-radius: 100px;
+      padding: 0.08rem 0.55rem;
+      margin: 2px 2px;
+    }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 500px) {
       .main { padding-top: 12vh; }
       .card { flex-direction: column; align-items: center; text-align: center; gap: 1.2rem; padding: 1.8rem 1.4rem; }
       .card-info { align-items: center; }
       .username-row { justify-content: center; }
+      .about-card { padding: 2rem 1.4rem 1.6rem; }
     }
   </style>
 </head>
@@ -412,7 +636,57 @@
     <div class="typewriter-wrap">
       <span class="typewriter-text" id="tw-text"></span><span class="typewriter-cursor"></span>
     </div>
+
+    <!-- About button -->
+    <div class="about-btn-wrap" id="about-btn-wrap">
+      <button class="about-btn" id="about-btn">click here to view about me</button>
+    </div>
   </main>
+
+  <!-- About overlay -->
+  <div id="about-overlay">
+    <div class="about-card">
+      <button class="about-close" id="about-close" title="Close">✕</button>
+      <div class="about-title">about me</div>
+
+      <div class="about-section">
+        <p>hi, i'm <span class="tag">f3kel</span>.<br>
+        i made this website because i got bored of all those bio websites that are all the same — the only things that change are the bg, colors and animations.<br>
+        i also made this website if i need to host something, such as scripts or just other things like emails or others.</p>
+      </div>
+
+      <div class="about-section">
+        <p>i like exploiting and hacking in games. sometimes i play legit, most of the time i just closet-cheat.<br>
+        i love <span class="tag">color blue</span>, <span class="tag">cats</span> and <span class="tag">coding</span>.</p>
+      </div>
+
+      <div class="about-section">
+        <p>i know how to code: <span class="tag">LuaU</span> <span class="tag">Python</span> <span class="tag">Node.JS</span> and some others.<br>
+        i own <span class="tag">reversal</span>, one of my projects.<br>
+        all my failed projects are: <span class="tag">6hx</span> <span class="tag">cerium prison life</span> <span class="tag">6hxv2</span>.</p>
+      </div>
+
+      <div class="about-section">
+        <p>all my friends are<br>
+          <span class="friend">panammiguel</span>
+          <span class="friend">invulnerable</span>
+          <span class="friend">xrrygg</span>
+          <span class="friend">weibaah</span>
+          <span class="friend">vukio</span>
+          <span class="friend">hugocraftmc</span>
+          <span class="friend">1heo</span>
+          <span class="friend">9kwr</span>
+          <span class="friend">deceitfulness</span>
+          <span class="friend">cole</span>
+          <span class="friend">Joe</span>
+        </p>
+      </div>
+
+      <div class="about-section">
+        <p>contact me on discord <span class="tag">@c98j</span></p>
+      </div>
+    </div>
+  </div>
 
   <footer class="footer" id="footer">
     <p class="footer-text">
@@ -719,6 +993,54 @@
       requestAnimationFrame(tickRipple);
     })();
   })();
+    /* ── ABOUT BUTTON LOGIC ── */
+    (function() {
+      const btnWrap = document.getElementById('about-btn-wrap');
+      const btn     = document.getElementById('about-btn');
+      const overlay = document.getElementById('about-overlay');
+      const closeBtn= document.getElementById('about-close');
+
+      function openAbout() {
+        // Hide button with animation
+        btnWrap.classList.add('hiding');
+        btnWrap.addEventListener('animationend', () => {
+          btnWrap.style.display = 'none';
+        }, { once: true });
+
+        // Show overlay
+        overlay.classList.add('visible');
+      }
+
+      function closeAbout() {
+        overlay.classList.remove('visible');
+        // Fade overlay out then show button again
+        setTimeout(() => {
+          btnWrap.style.display = '';
+          btnWrap.classList.remove('hiding');
+          // Re-trigger fade in
+          btnWrap.style.opacity = '0';
+          btnWrap.style.animation = 'none';
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              btnWrap.style.animation = 'slideIn 0.45s ease forwards';
+            });
+          });
+        }, 480);
+      }
+
+      btn.addEventListener('click', openAbout);
+      closeBtn.addEventListener('click', closeAbout);
+
+      // Click outside card to close
+      overlay.addEventListener('click', e => {
+        if (e.target === overlay) closeAbout();
+      });
+
+      // Escape key
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && overlay.classList.contains('visible')) closeAbout();
+      });
+    })();
   </script>
 </body>
 </html>
