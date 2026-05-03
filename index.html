@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>F3kel666</title>
+  <title>F3 — Profile</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
@@ -793,11 +793,10 @@
   <script src="bg.js?v=4"></script>
   <script>
   /* ═══════════════════════════════════════════════════
-     BG SWITCHER — 3 backgrounds + cookie persistence
+     BG SWITCHER — single persistent RAF, no gaps
      ═══════════════════════════════════════════════════ */
   (function() {
 
-    /* ── Cookie helpers ── */
     function setCookie(name, val, days) {
       const d = new Date();
       d.setTime(d.getTime() + days * 864e5);
@@ -812,261 +811,202 @@
       return null;
     }
 
-    /* ── DOM refs ── */
-    const glCanvas  = document.getElementById('bg-canvas');
-    const c2d       = document.getElementById('bg-canvas-2d');
-    const ctx2d     = c2d.getContext('2d');
-    const switcher  = document.getElementById('bg-switcher');
-    const btn       = document.getElementById('bg-switcher-btn');
-    const dropdown  = document.getElementById('bg-dropdown');
-    const options   = document.querySelectorAll('.bg-option');
+    const glCanvas = document.getElementById('bg-canvas');
+    const c2d      = document.getElementById('bg-canvas-2d');
+    const ctx      = c2d.getContext('2d');
+    const switcher = document.getElementById('bg-switcher');
+    const btn      = document.getElementById('bg-switcher-btn');
+    const dropdown = document.getElementById('bg-dropdown');
+    const options  = document.querySelectorAll('.bg-option');
 
-    let currentBg = getCookie('f3k_bg') || 'fluid';
-    let raf2d = null;   // animation frame handle for 2d bgs
-    let W2, H2;
-
-    function resize2d() {
-      W2 = c2d.width  = window.innerWidth;
-      H2 = c2d.height = window.innerHeight;
+    let W, H;
+    function resize() {
+      W = c2d.width  = window.innerWidth;
+      H = c2d.height = window.innerHeight;
     }
-    resize2d();
-    window.addEventListener('resize', resize2d);
+    resize();
+    window.addEventListener('resize', resize);
 
-    /* ────────────────────────────────────────────────
-       BG 2 — PARALLAX LINES
-       Multiple layers of diagonal blue gradient lines
-       that drift at different speeds (parallax).
-    ─────────────────────────────────────────────────*/
-    function startLines() {
-      c2d.style.display = 'block';
-      glCanvas.style.display = 'none';
-      document.body.style.background = '#030916';
+    /* ── current bg name — just read this in the single loop ── */
+    let activeBg = getCookie('f3k_bg') || 'fluid';
 
-      const LAYERS = [
-        { count: 9,  angle: 28,  speed: 0.12, alpha: 0.12, width: 1.2, spacing: 140, offset: 0 },
-        { count: 6,  angle: 28,  speed: 0.22, alpha: 0.22, width: 2,   spacing: 200, offset: 0 },
-        { count: 4,  angle: 28,  speed: 0.38, alpha: 0.38, width: 3.5, spacing: 310, offset: 0 },
-        { count: 14, angle: -18, speed: 0.08, alpha: 0.07, width: 0.8, spacing: 95,  offset: 0 },
-        { count: 5,  angle: -18, speed: 0.18, alpha: 0.16, width: 1.8, spacing: 230, offset: 0 },
-      ];
+    /* ── global time origin — never resets ── */
+    const T0 = performance.now();
+    function now() { return (performance.now() - T0) * 0.001; }
 
-      function drawLines(t) {
-        ctx2d.clearRect(0, 0, W2, H2);
+    /* ═══════════════════════════════════
+       LINES STATE — pre-built, persistent
+    ═══════════════════════════════════ */
+    const LAYERS = [
+      { count:10, angle:28,  speed:0.10, alpha:0.12, width:1.2, spacing:140 },
+      { count: 7, angle:28,  speed:0.20, alpha:0.22, width:2.0, spacing:200 },
+      { count: 4, angle:28,  speed:0.34, alpha:0.38, width:3.5, spacing:310 },
+      { count:15, angle:-18, speed:0.07, alpha:0.07, width:0.8, spacing: 95 },
+      { count: 5, angle:-18, speed:0.16, alpha:0.16, width:1.8, spacing:230 },
+    ];
 
-        /* Dark gradient base */
-        const base = ctx2d.createLinearGradient(0, 0, W2, H2);
-        base.addColorStop(0,   '#030916');
-        base.addColorStop(0.4, '#050e22');
-        base.addColorStop(0.7, '#040c1c');
-        base.addColorStop(1,   '#020711');
-        ctx2d.fillStyle = base;
-        ctx2d.fillRect(0, 0, W2, H2);
+    function drawLines(t) {
+      ctx.clearRect(0, 0, W, H);
 
-        const diag = Math.sqrt(W2*W2 + H2*H2);
+      const base = ctx.createLinearGradient(0, 0, W, H);
+      base.addColorStop(0,   '#030916');
+      base.addColorStop(0.4, '#050e22');
+      base.addColorStop(0.7, '#040c1c');
+      base.addColorStop(1,   '#020711');
+      ctx.fillStyle = base;
+      ctx.fillRect(0, 0, W, H);
 
-        LAYERS.forEach((layer, li) => {
-          layer.offset = (t * layer.speed * 60) % layer.spacing;
+      const diag = Math.sqrt(W*W + H*H);
 
-          ctx2d.save();
-          ctx2d.translate(W2/2, H2/2);
-          ctx2d.rotate(layer.angle * Math.PI / 180);
+      LAYERS.forEach((layer, li) => {
+        const offset = (t * layer.speed * 60) % layer.spacing;
+        ctx.save();
+        ctx.translate(W/2, H/2);
+        ctx.rotate(layer.angle * Math.PI / 180);
 
-          /* Gradient per layer — bright center, fade edges */
-          for (let i = -layer.count; i <= layer.count; i++) {
-            const x = i * layer.spacing - layer.offset;
-            /* Pulse brightness over time */
-            const pulse = 0.7 + 0.3 * Math.sin(t * 0.6 + li * 1.1 + i * 0.4);
-            const a = layer.alpha * pulse;
+        for (let i = -layer.count; i <= layer.count; i++) {
+          const x     = i * layer.spacing - offset;
+          const pulse = 0.7 + 0.3 * Math.sin(t * 0.6 + li * 1.1 + i * 0.4);
+          const a     = layer.alpha * pulse;
 
-            const grad = ctx2d.createLinearGradient(x, -diag/2, x, diag/2);
-            /* Blue → cyan gradient along the line */
-            grad.addColorStop(0,   `rgba(20,60,180,0)`);
-            grad.addColorStop(0.2, `rgba(40,100,255,${(a*0.5).toFixed(3)})`);
-            grad.addColorStop(0.5, `rgba(80,160,255,${a.toFixed(3)})`);
-            grad.addColorStop(0.8, `rgba(40,100,255,${(a*0.5).toFixed(3)})`);
-            grad.addColorStop(1,   `rgba(20,60,180,0)`);
+          const grad = ctx.createLinearGradient(x, -diag/2, x, diag/2);
+          grad.addColorStop(0,   `rgba(20,60,180,0)`);
+          grad.addColorStop(0.2, `rgba(40,100,255,${(a*0.5).toFixed(3)})`);
+          grad.addColorStop(0.5, `rgba(80,160,255,${a.toFixed(3)})`);
+          grad.addColorStop(0.8, `rgba(40,100,255,${(a*0.5).toFixed(3)})`);
+          grad.addColorStop(1,   `rgba(20,60,180,0)`);
 
-            ctx2d.beginPath();
-            ctx2d.moveTo(x, -diag/2);
-            ctx2d.lineTo(x,  diag/2);
-            ctx2d.strokeStyle = grad;
-            ctx2d.lineWidth = layer.width * pulse;
-            ctx2d.stroke();
-          }
-          ctx2d.restore();
-        });
+          ctx.beginPath();
+          ctx.moveTo(x, -diag/2);
+          ctx.lineTo(x,  diag/2);
+          ctx.strokeStyle = grad;
+          ctx.lineWidth   = layer.width * pulse;
+          ctx.stroke();
+        }
+        ctx.restore();
+      });
 
-        /* Vignette overlay */
-        const vig = ctx2d.createRadialGradient(W2/2, H2/2, H2*0.1, W2/2, H2/2, H2*0.85);
-        vig.addColorStop(0, 'rgba(0,0,0,0)');
-        vig.addColorStop(1, 'rgba(0,4,18,0.72)');
-        ctx2d.fillStyle = vig;
-        ctx2d.fillRect(0, 0, W2, H2);
-      }
+      const vig = ctx.createRadialGradient(W/2, H/2, H*0.1, W/2, H/2, H*0.85);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,4,18,0.72)');
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, W, H);
+    }
 
-      const t0 = performance.now();
-      function frame() {
-        const t = (performance.now() - t0) * 0.001;
+    /* ═══════════════════════════════════
+       ORBS STATE — pre-built, persistent
+    ═══════════════════════════════════ */
+    const BIG_ORBS = [
+      { x:0.15, y:0.3,  r:320, hue:210, alpha:0.04 },
+      { x:0.82, y:0.65, r:280, hue:200, alpha:0.05 },
+      { x:0.5,  y:0.9,  r:240, hue:220, alpha:0.04 },
+    ];
+
+    const orbs = Array.from({length:11}, () => ({
+      x:      Math.random() * window.innerWidth,
+      y:      Math.random() * window.innerHeight,
+      r:      60 + Math.random() * 140,
+      vx:     (Math.random()-0.5) * 0.35,
+      vy:     (Math.random()-0.5) * 0.28,
+      hue:    195 + Math.random() * 50,
+      sat:    70  + Math.random() * 30,
+      alpha:  0.05 + Math.random() * 0.12,
+      phase:  Math.random() * Math.PI * 2,
+      pSpeed: 0.4  + Math.random() * 0.5,
+      innerR: 0.18 + Math.random() * 0.22,
+      innerA: 0.18 + Math.random() * 0.15,
+    }));
+
+    function drawOrbs(t) {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#020610';
+      ctx.fillRect(0, 0, W, H);
+
+      BIG_ORBS.forEach(o => {
+        const gx = o.x*W, gy = o.y*H;
+        const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, o.r);
+        g.addColorStop(0,   `hsla(${o.hue},80%,55%,${o.alpha})`);
+        g.addColorStop(0.5, `hsla(${o.hue},70%,40%,${o.alpha*0.5})`);
+        g.addColorStop(1,   `hsla(${o.hue},60%,20%,0)`);
+        ctx.beginPath(); ctx.arc(gx, gy, o.r, 0, Math.PI*2);
+        ctx.fillStyle = g; ctx.fill();
+      });
+
+      orbs.forEach(orb => {
+        orb.x += orb.vx; orb.y += orb.vy;
+        if (orb.x < -orb.r*1.5) orb.x = W+orb.r;
+        if (orb.x >  W+orb.r*1.5) orb.x = -orb.r;
+        if (orb.y < -orb.r*1.5) orb.y = H+orb.r;
+        if (orb.y >  H+orb.r*1.5) orb.y = -orb.r;
+
+        const pulse  = 0.65 + 0.35 * Math.sin(t * orb.pSpeed + orb.phase);
+        const radius = orb.r * (0.85 + 0.15 * pulse);
+        const alpha  = orb.alpha * pulse;
+
+        const g = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, radius);
+        g.addColorStop(0,    `hsla(${orb.hue},${orb.sat}%,65%,${(alpha*1.8).toFixed(3)})`);
+        g.addColorStop(0.25, `hsla(${orb.hue},${orb.sat}%,55%,${alpha.toFixed(3)})`);
+        g.addColorStop(0.65, `hsla(${orb.hue},${orb.sat-10}%,40%,${(alpha*0.35).toFixed(3)})`);
+        g.addColorStop(1,    `hsla(${orb.hue},60%,25%,0)`);
+        ctx.beginPath(); ctx.arc(orb.x, orb.y, radius, 0, Math.PI*2);
+        ctx.fillStyle = g; ctx.fill();
+
+        const ir = radius * orb.innerR;
+        const ig = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, ir);
+        ig.addColorStop(0,   `hsla(${orb.hue+15},90%,80%,${(orb.innerA*pulse).toFixed(3)})`);
+        ig.addColorStop(0.6, `hsla(${orb.hue},80%,60%,${(orb.innerA*pulse*0.4).toFixed(3)})`);
+        ig.addColorStop(1,   `hsla(${orb.hue},70%,40%,0)`);
+        ctx.beginPath(); ctx.arc(orb.x, orb.y, ir, 0, Math.PI*2);
+        ctx.fillStyle = ig; ctx.fill();
+      });
+
+      const vig = ctx.createRadialGradient(W/2, H/2, H*0.05, W/2, H/2, H*0.82);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,3,15,0.68)');
+      ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+    }
+
+    /* ═══════════════════════════════════════════════
+       ONE SINGLE RAF — never cancelled, never restarted
+       Just reads activeBg every frame.
+    ═══════════════════════════════════════════════ */
+    function masterLoop() {
+      const t = now();
+      if (activeBg === 'lines') {
         drawLines(t);
-        raf2d = requestAnimationFrame(frame);
+      } else if (activeBg === 'orbs') {
+        drawOrbs(t);
       }
-      raf2d = requestAnimationFrame(frame);
+      /* 'fluid' — WebGL draws itself in its own loop, canvas-2d stays clear */
+      requestAnimationFrame(masterLoop);
     }
+    requestAnimationFrame(masterLoop);
 
-    /* ────────────────────────────────────────────────
-       BG 3 — GLOWING ORBS
-       Soft glowing circles that drift, pulse and
-       occasionally spawn new ones. Liquid feel.
-    ─────────────────────────────────────────────────*/
-    function startOrbs() {
-      c2d.style.display = 'block';
-      glCanvas.style.display = 'none';
-      document.body.style.background = '#020610';
-
-      const ORB_COUNT = 11;
-      const orbs = [];
-
-      function makeOrb(i) {
-        return {
-          x:    Math.random() * W2,
-          y:    Math.random() * H2,
-          r:    60 + Math.random() * 140,
-          vx:   (Math.random() - 0.5) * 0.35,
-          vy:   (Math.random() - 0.5) * 0.28,
-          hue:  195 + Math.random() * 50,   /* blue → cyan range */
-          sat:  70 + Math.random() * 30,
-          alpha: 0.05 + Math.random() * 0.12,
-          phase: Math.random() * Math.PI * 2,
-          pSpeed: 0.4 + Math.random() * 0.5,
-          /* secondary inner glow */
-          innerR: 0.18 + Math.random() * 0.22,
-          innerAlpha: 0.18 + Math.random() * 0.15,
-        };
-      }
-
-      for (let i = 0; i < ORB_COUNT; i++) orbs.push(makeOrb(i));
-
-      /* A few static large background orbs for depth */
-      const BIG_ORBS = [
-        { x: 0.15, y: 0.3,  r: 320, hue: 210, alpha: 0.04 },
-        { x: 0.82, y: 0.65, r: 280, hue: 200, alpha: 0.05 },
-        { x: 0.5,  y: 0.9,  r: 240, hue: 220, alpha: 0.04 },
-      ];
-
-      const t0 = performance.now();
-
-      function frame() {
-        const t = (performance.now() - t0) * 0.001;
-        ctx2d.clearRect(0, 0, W2, H2);
-
-        /* Background */
-        ctx2d.fillStyle = '#020610';
-        ctx2d.fillRect(0, 0, W2, H2);
-
-        /* Big static bg orbs */
-        BIG_ORBS.forEach(o => {
-          const gx = o.x * W2, gy = o.y * H2;
-          const g = ctx2d.createRadialGradient(gx, gy, 0, gx, gy, o.r);
-          g.addColorStop(0,   `hsla(${o.hue},80%,55%,${o.alpha})`);
-          g.addColorStop(0.5, `hsla(${o.hue},70%,40%,${o.alpha*0.5})`);
-          g.addColorStop(1,   `hsla(${o.hue},60%,20%,0)`);
-          ctx2d.beginPath();
-          ctx2d.arc(gx, gy, o.r, 0, Math.PI*2);
-          ctx2d.fillStyle = g;
-          ctx2d.fill();
-        });
-
-        /* Animated orbs */
-        orbs.forEach(orb => {
-          /* drift */
-          orb.x += orb.vx;
-          orb.y += orb.vy;
-          /* wrap around */
-          if (orb.x < -orb.r*1.5) orb.x = W2 + orb.r;
-          if (orb.x > W2+orb.r*1.5) orb.x = -orb.r;
-          if (orb.y < -orb.r*1.5) orb.y = H2 + orb.r;
-          if (orb.y > H2+orb.r*1.5) orb.y = -orb.r;
-
-          /* pulse */
-          const pulse  = 0.65 + 0.35 * Math.sin(t * orb.pSpeed + orb.phase);
-          const radius = orb.r * (0.85 + 0.15 * pulse);
-          const alpha  = orb.alpha * pulse;
-
-          /* Outer glow */
-          const g = ctx2d.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, radius);
-          g.addColorStop(0,    `hsla(${orb.hue},${orb.sat}%,65%,${(alpha*1.8).toFixed(3)})`);
-          g.addColorStop(0.25, `hsla(${orb.hue},${orb.sat}%,55%,${alpha.toFixed(3)})`);
-          g.addColorStop(0.65, `hsla(${orb.hue},${orb.sat-10}%,40%,${(alpha*0.35).toFixed(3)})`);
-          g.addColorStop(1,    `hsla(${orb.hue},60%,25%,0)`);
-          ctx2d.beginPath();
-          ctx2d.arc(orb.x, orb.y, radius, 0, Math.PI*2);
-          ctx2d.fillStyle = g;
-          ctx2d.fill();
-
-          /* Inner bright core */
-          const innerR = radius * orb.innerR;
-          const ig = ctx2d.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, innerR);
-          ig.addColorStop(0,   `hsla(${orb.hue+15},90%,80%,${(orb.innerAlpha*pulse).toFixed(3)})`);
-          ig.addColorStop(0.6, `hsla(${orb.hue},80%,60%,${(orb.innerAlpha*pulse*0.4).toFixed(3)})`);
-          ig.addColorStop(1,   `hsla(${orb.hue},70%,40%,0)`);
-          ctx2d.beginPath();
-          ctx2d.arc(orb.x, orb.y, innerR, 0, Math.PI*2);
-          ctx2d.fillStyle = ig;
-          ctx2d.fill();
-        });
-
-        /* Vignette */
-        const vig = ctx2d.createRadialGradient(W2/2, H2/2, H2*0.05, W2/2, H2/2, H2*0.82);
-        vig.addColorStop(0, 'rgba(0,0,0,0)');
-        vig.addColorStop(1, 'rgba(0,3,15,0.68)');
-        ctx2d.fillStyle = vig;
-        ctx2d.fillRect(0, 0, W2, H2);
-
-        raf2d = requestAnimationFrame(frame);
-      }
-      raf2d = requestAnimationFrame(frame);
-    }
-
-    /* ────────────────────────────────────────────────
-       Switch logic
-    ─────────────────────────────────────────────────*/
+    /* ═══════════════════════════════════════════════
+       SWITCH — just flip the flag + show/hide canvases
+    ═══════════════════════════════════════════════ */
     function applyBg(name, save) {
-      /* Stop any running 2d loop */
-      if (raf2d) { cancelAnimationFrame(raf2d); raf2d = null; }
-      ctx2d.clearRect(0, 0, W2, H2);
-
-      /* Update active state on options */
       options.forEach(o => o.classList.toggle('active', o.dataset.bg === name));
-      currentBg = name;
+      activeBg = name;
       if (save) setCookie('f3k_bg', name, 365);
 
       if (name === 'fluid') {
+        /* Show WebGL, hide 2d — clear first to avoid flash */
+        ctx.clearRect(0, 0, W, H);
+        c2d.style.display    = 'none';
         glCanvas.style.display = 'block';
-        c2d.style.display = 'none';
         document.body.style.background = '#0d1117';
-      } else if (name === 'lines') {
-        startLines();
-      } else if (name === 'orbs') {
-        startOrbs();
+      } else {
+        glCanvas.style.display = 'none';
+        c2d.style.display      = 'block';
+        document.body.style.background = name === 'orbs' ? '#020610' : '#030916';
       }
-
-      /* Animate canvas transition — crossfade via opacity */
-      const target = name === 'fluid' ? glCanvas : c2d;
-      target.style.opacity = '0';
-      target.style.transition = 'opacity 0.7s ease';
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => { target.style.opacity = '1'; });
-      });
     }
 
-    /* ── Toggle dropdown ── */
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      dropdown.classList.toggle('open');
-    });
+    /* ── Dropdown ── */
+    btn.addEventListener('click', e => { e.stopPropagation(); dropdown.classList.toggle('open'); });
     document.addEventListener('click', () => dropdown.classList.remove('open'));
     dropdown.addEventListener('click', e => e.stopPropagation());
-
     options.forEach(opt => {
       opt.addEventListener('click', () => {
         applyBg(opt.dataset.bg, true);
@@ -1074,15 +1014,14 @@
       });
     });
 
-    /* ── Fade in switcher with music player ── */
+    /* ── Fade in ── */
     setTimeout(() => {
       switcher.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-      switcher.style.opacity = '1';
-      switcher.style.transform = 'translateY(0)';
+      switcher.style.opacity    = '1';
+      switcher.style.transform  = 'translateY(0)';
     }, 1900);
 
-    /* ── Apply saved bg on load ── */
-    applyBg(currentBg, false);
+    applyBg(activeBg, false);
 
   })();
   </script>
