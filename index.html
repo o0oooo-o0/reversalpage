@@ -414,9 +414,9 @@
     </p>
   </footer>
 
-  <script src="bg.js"></script>
-  <script src="discord.js"></script>
-  <script src="typewriter.js"></script>
+  <script src="bg.js?v=4"></script>
+  <script src="discord.js?v=2"></script>
+  <script src="typewriter.js?v=2"></script>
   <script>
   (function() {
     function lerp(a, b, t) { return a + (b - a) * t; }
@@ -455,24 +455,47 @@
     const ICON_PAUSE = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
 
     audio.volume = 0.4;
+    audio.loop   = true;
 
-    playBtn.addEventListener('click', () => {
-      if (audio.paused) {
-        audio.play();
-        playIcon.innerHTML = ICON_PAUSE;
-      } else {
-        audio.pause();
-        playIcon.innerHTML = ICON_PLAY;
-      }
+    function syncIcon() {
+      playIcon.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE;
+    }
+
+    /* Autoplay: browsers require a user gesture first.
+       We attempt silent autoplay immediately; if blocked,
+       we play on the very first interaction anywhere on the page. */
+    function tryAutoplay() {
+      audio.play().then(() => {
+        syncIcon();
+      }).catch(() => {
+        /* Blocked — wait for first click/touch anywhere */
+        function onFirstInteraction() {
+          audio.play().then(syncIcon);
+          document.removeEventListener('click',     onFirstInteraction);
+          document.removeEventListener('touchstart',onFirstInteraction);
+          document.removeEventListener('keydown',   onFirstInteraction);
+        }
+        document.addEventListener('click',      onFirstInteraction, { once: true });
+        document.addEventListener('touchstart', onFirstInteraction, { once: true });
+        document.addEventListener('keydown',    onFirstInteraction, { once: true });
+      });
+    }
+
+    /* Small delay so the audio element is fully ready */
+    setTimeout(tryAutoplay, 500);
+
+    playBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (audio.paused) { audio.play().then(syncIcon); }
+      else              { audio.pause(); syncIcon(); }
     });
 
     volSlider.addEventListener('input', () => {
       audio.volume = volSlider.value / 100;
     });
 
-    audio.addEventListener('ended', () => {
-      playIcon.innerHTML = ICON_PLAY;
-    });
+    audio.addEventListener('play',  syncIcon);
+    audio.addEventListener('pause', syncIcon);
 
     /* ── RIPPLE / 3D LIQUID SURFACE DISTURBANCE ── */
     const rc   = document.getElementById('ripple-canvas');
