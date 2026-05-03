@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>F3kel666</title>
+  <title>F3 — Profile</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
@@ -571,6 +571,79 @@
       margin: 2px 2px;
     }
 
+    /* ── BG SWITCHER ── */
+    .bg-switcher {
+      position: fixed;
+      top: 1.2rem; right: 1.2rem;
+      z-index: 30;
+      opacity: 0;
+      transform: translateY(-14px);
+      transition: none;
+    }
+    .bg-switcher-btn {
+      display: flex; align-items: center; gap: 0.45rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.67rem; letter-spacing: 0.04em;
+      color: rgba(160,200,255,0.8);
+      background: rgba(8,16,40,0.75);
+      border: 1px solid rgba(79,127,255,0.22);
+      border-radius: 100px;
+      padding: 0.44rem 0.85rem 0.44rem 0.65rem;
+      cursor: pointer;
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      transition: border-color 0.22s, color 0.22s, box-shadow 0.22s, transform 0.18s;
+    }
+    .bg-switcher-btn:hover {
+      border-color: rgba(79,127,255,0.5); color: #c8deff;
+      box-shadow: 0 4px 28px rgba(0,0,0,0.5), 0 0 22px rgba(79,127,255,0.18);
+      transform: translateY(-1px);
+    }
+    .bg-switcher-btn svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+    .bg-dropdown {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      min-width: 178px;
+      background: rgba(6,13,34,0.92);
+      border: 1px solid rgba(79,127,255,0.18);
+      border-radius: 14px;
+      backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+      box-shadow: 0 14px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset;
+      padding: 0.45rem;
+      opacity: 0; transform: translateY(-6px) scale(0.96);
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .bg-dropdown.open { opacity: 1; transform: none; pointer-events: auto; }
+
+    .bg-option {
+      display: flex; align-items: center; gap: 0.6rem;
+      width: 100%; padding: 0.5rem 0.65rem;
+      border: none; border-radius: 9px;
+      background: transparent;
+      color: rgba(155,195,255,0.72);
+      font-family: 'DM Sans', sans-serif; font-size: 0.79rem;
+      cursor: pointer; text-align: left;
+      transition: background 0.16s, color 0.16s;
+    }
+    .bg-option:hover  { background: rgba(79,127,255,0.13); color: #c8deff; }
+    .bg-option.active { background: rgba(79,127,255,0.20); color: #aad0ff; }
+    .bg-option .swatch {
+      width: 26px; height: 17px; border-radius: 5px;
+      border: 1px solid rgba(79,127,255,0.28);
+      flex-shrink: 0;
+    }
+    .sw-fluid { background: radial-gradient(ellipse at 30% 60%, #091840, #010509); }
+    .sw-lines { background: linear-gradient(135deg, #040c22 0%, #0b1a3a 55%, #040c22 100%); }
+    .sw-orbs  { background: radial-gradient(circle at 40% 50%, #0c1840 0%, #020610 100%); }
+
+    #bg-canvas-2d {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      z-index: 0; pointer-events: none;
+      display: none;
+    }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 500px) {
       .main { padding-top: 12vh; }
@@ -578,13 +651,28 @@
       .card-info { align-items: center; }
       .username-row { justify-content: center; }
       .about-card { padding: 2rem 1.4rem 1.6rem; }
+      .bg-switcher { top: auto; bottom: 5.5rem; right: 1rem; }
     }
   </style>
 </head>
 <body>
 
   <canvas id="bg-canvas"></canvas>
+  <canvas id="bg-canvas-2d"></canvas>
   <canvas id="ripple-canvas"></canvas>
+
+  <!-- BG Switcher -->
+  <div class="bg-switcher" id="bg-switcher">
+    <button class="bg-switcher-btn" id="bg-switcher-btn" title="Change background">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M17.66 6.34l-1.41 1.41M6.34 17.66l-1.41 1.41"/></svg>
+      background
+    </button>
+    <div class="bg-dropdown" id="bg-dropdown">
+      <button class="bg-option" data-bg="fluid"><span class="swatch sw-fluid"></span> fluid ocean</button>
+      <button class="bg-option" data-bg="lines"><span class="swatch sw-lines"></span> parallax lines</button>
+      <button class="bg-option" data-bg="orbs"><span class="swatch sw-orbs"></span> glowing orbs</button>
+    </div>
+  </div>
 
   <!-- Music Player -->
   <div class="music-player" id="music-player">
@@ -703,6 +791,301 @@
   </footer>
 
   <script src="bg.js?v=4"></script>
+  <script>
+  /* ═══════════════════════════════════════════════════
+     BG SWITCHER — 3 backgrounds + cookie persistence
+     ═══════════════════════════════════════════════════ */
+  (function() {
+
+    /* ── Cookie helpers ── */
+    function setCookie(name, val, days) {
+      const d = new Date();
+      d.setTime(d.getTime() + days * 864e5);
+      document.cookie = name + '=' + val + ';expires=' + d.toUTCString() + ';path=/';
+    }
+    function getCookie(name) {
+      const prefix = name + '=';
+      for (const part of document.cookie.split(';')) {
+        const c = part.trim();
+        if (c.startsWith(prefix)) return c.slice(prefix.length);
+      }
+      return null;
+    }
+
+    /* ── DOM refs ── */
+    const glCanvas  = document.getElementById('bg-canvas');
+    const c2d       = document.getElementById('bg-canvas-2d');
+    const ctx2d     = c2d.getContext('2d');
+    const switcher  = document.getElementById('bg-switcher');
+    const btn       = document.getElementById('bg-switcher-btn');
+    const dropdown  = document.getElementById('bg-dropdown');
+    const options   = document.querySelectorAll('.bg-option');
+
+    let currentBg = getCookie('f3k_bg') || 'fluid';
+    let raf2d = null;   // animation frame handle for 2d bgs
+    let W2, H2;
+
+    function resize2d() {
+      W2 = c2d.width  = window.innerWidth;
+      H2 = c2d.height = window.innerHeight;
+    }
+    resize2d();
+    window.addEventListener('resize', resize2d);
+
+    /* ────────────────────────────────────────────────
+       BG 2 — PARALLAX LINES
+       Multiple layers of diagonal blue gradient lines
+       that drift at different speeds (parallax).
+    ─────────────────────────────────────────────────*/
+    function startLines() {
+      c2d.style.display = 'block';
+      glCanvas.style.display = 'none';
+      document.body.style.background = '#030916';
+
+      const LAYERS = [
+        { count: 9,  angle: 28,  speed: 0.12, alpha: 0.12, width: 1.2, spacing: 140, offset: 0 },
+        { count: 6,  angle: 28,  speed: 0.22, alpha: 0.22, width: 2,   spacing: 200, offset: 0 },
+        { count: 4,  angle: 28,  speed: 0.38, alpha: 0.38, width: 3.5, spacing: 310, offset: 0 },
+        { count: 14, angle: -18, speed: 0.08, alpha: 0.07, width: 0.8, spacing: 95,  offset: 0 },
+        { count: 5,  angle: -18, speed: 0.18, alpha: 0.16, width: 1.8, spacing: 230, offset: 0 },
+      ];
+
+      function drawLines(t) {
+        ctx2d.clearRect(0, 0, W2, H2);
+
+        /* Dark gradient base */
+        const base = ctx2d.createLinearGradient(0, 0, W2, H2);
+        base.addColorStop(0,   '#030916');
+        base.addColorStop(0.4, '#050e22');
+        base.addColorStop(0.7, '#040c1c');
+        base.addColorStop(1,   '#020711');
+        ctx2d.fillStyle = base;
+        ctx2d.fillRect(0, 0, W2, H2);
+
+        const diag = Math.sqrt(W2*W2 + H2*H2);
+
+        LAYERS.forEach((layer, li) => {
+          layer.offset = (t * layer.speed * 60) % layer.spacing;
+
+          ctx2d.save();
+          ctx2d.translate(W2/2, H2/2);
+          ctx2d.rotate(layer.angle * Math.PI / 180);
+
+          /* Gradient per layer — bright center, fade edges */
+          for (let i = -layer.count; i <= layer.count; i++) {
+            const x = i * layer.spacing - layer.offset;
+            /* Pulse brightness over time */
+            const pulse = 0.7 + 0.3 * Math.sin(t * 0.6 + li * 1.1 + i * 0.4);
+            const a = layer.alpha * pulse;
+
+            const grad = ctx2d.createLinearGradient(x, -diag/2, x, diag/2);
+            /* Blue → cyan gradient along the line */
+            grad.addColorStop(0,   `rgba(20,60,180,0)`);
+            grad.addColorStop(0.2, `rgba(40,100,255,${(a*0.5).toFixed(3)})`);
+            grad.addColorStop(0.5, `rgba(80,160,255,${a.toFixed(3)})`);
+            grad.addColorStop(0.8, `rgba(40,100,255,${(a*0.5).toFixed(3)})`);
+            grad.addColorStop(1,   `rgba(20,60,180,0)`);
+
+            ctx2d.beginPath();
+            ctx2d.moveTo(x, -diag/2);
+            ctx2d.lineTo(x,  diag/2);
+            ctx2d.strokeStyle = grad;
+            ctx2d.lineWidth = layer.width * pulse;
+            ctx2d.stroke();
+          }
+          ctx2d.restore();
+        });
+
+        /* Vignette overlay */
+        const vig = ctx2d.createRadialGradient(W2/2, H2/2, H2*0.1, W2/2, H2/2, H2*0.85);
+        vig.addColorStop(0, 'rgba(0,0,0,0)');
+        vig.addColorStop(1, 'rgba(0,4,18,0.72)');
+        ctx2d.fillStyle = vig;
+        ctx2d.fillRect(0, 0, W2, H2);
+      }
+
+      const t0 = performance.now();
+      function frame() {
+        const t = (performance.now() - t0) * 0.001;
+        drawLines(t);
+        raf2d = requestAnimationFrame(frame);
+      }
+      raf2d = requestAnimationFrame(frame);
+    }
+
+    /* ────────────────────────────────────────────────
+       BG 3 — GLOWING ORBS
+       Soft glowing circles that drift, pulse and
+       occasionally spawn new ones. Liquid feel.
+    ─────────────────────────────────────────────────*/
+    function startOrbs() {
+      c2d.style.display = 'block';
+      glCanvas.style.display = 'none';
+      document.body.style.background = '#020610';
+
+      const ORB_COUNT = 11;
+      const orbs = [];
+
+      function makeOrb(i) {
+        return {
+          x:    Math.random() * W2,
+          y:    Math.random() * H2,
+          r:    60 + Math.random() * 140,
+          vx:   (Math.random() - 0.5) * 0.35,
+          vy:   (Math.random() - 0.5) * 0.28,
+          hue:  195 + Math.random() * 50,   /* blue → cyan range */
+          sat:  70 + Math.random() * 30,
+          alpha: 0.05 + Math.random() * 0.12,
+          phase: Math.random() * Math.PI * 2,
+          pSpeed: 0.4 + Math.random() * 0.5,
+          /* secondary inner glow */
+          innerR: 0.18 + Math.random() * 0.22,
+          innerAlpha: 0.18 + Math.random() * 0.15,
+        };
+      }
+
+      for (let i = 0; i < ORB_COUNT; i++) orbs.push(makeOrb(i));
+
+      /* A few static large background orbs for depth */
+      const BIG_ORBS = [
+        { x: 0.15, y: 0.3,  r: 320, hue: 210, alpha: 0.04 },
+        { x: 0.82, y: 0.65, r: 280, hue: 200, alpha: 0.05 },
+        { x: 0.5,  y: 0.9,  r: 240, hue: 220, alpha: 0.04 },
+      ];
+
+      const t0 = performance.now();
+
+      function frame() {
+        const t = (performance.now() - t0) * 0.001;
+        ctx2d.clearRect(0, 0, W2, H2);
+
+        /* Background */
+        ctx2d.fillStyle = '#020610';
+        ctx2d.fillRect(0, 0, W2, H2);
+
+        /* Big static bg orbs */
+        BIG_ORBS.forEach(o => {
+          const gx = o.x * W2, gy = o.y * H2;
+          const g = ctx2d.createRadialGradient(gx, gy, 0, gx, gy, o.r);
+          g.addColorStop(0,   `hsla(${o.hue},80%,55%,${o.alpha})`);
+          g.addColorStop(0.5, `hsla(${o.hue},70%,40%,${o.alpha*0.5})`);
+          g.addColorStop(1,   `hsla(${o.hue},60%,20%,0)`);
+          ctx2d.beginPath();
+          ctx2d.arc(gx, gy, o.r, 0, Math.PI*2);
+          ctx2d.fillStyle = g;
+          ctx2d.fill();
+        });
+
+        /* Animated orbs */
+        orbs.forEach(orb => {
+          /* drift */
+          orb.x += orb.vx;
+          orb.y += orb.vy;
+          /* wrap around */
+          if (orb.x < -orb.r*1.5) orb.x = W2 + orb.r;
+          if (orb.x > W2+orb.r*1.5) orb.x = -orb.r;
+          if (orb.y < -orb.r*1.5) orb.y = H2 + orb.r;
+          if (orb.y > H2+orb.r*1.5) orb.y = -orb.r;
+
+          /* pulse */
+          const pulse  = 0.65 + 0.35 * Math.sin(t * orb.pSpeed + orb.phase);
+          const radius = orb.r * (0.85 + 0.15 * pulse);
+          const alpha  = orb.alpha * pulse;
+
+          /* Outer glow */
+          const g = ctx2d.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, radius);
+          g.addColorStop(0,    `hsla(${orb.hue},${orb.sat}%,65%,${(alpha*1.8).toFixed(3)})`);
+          g.addColorStop(0.25, `hsla(${orb.hue},${orb.sat}%,55%,${alpha.toFixed(3)})`);
+          g.addColorStop(0.65, `hsla(${orb.hue},${orb.sat-10}%,40%,${(alpha*0.35).toFixed(3)})`);
+          g.addColorStop(1,    `hsla(${orb.hue},60%,25%,0)`);
+          ctx2d.beginPath();
+          ctx2d.arc(orb.x, orb.y, radius, 0, Math.PI*2);
+          ctx2d.fillStyle = g;
+          ctx2d.fill();
+
+          /* Inner bright core */
+          const innerR = radius * orb.innerR;
+          const ig = ctx2d.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, innerR);
+          ig.addColorStop(0,   `hsla(${orb.hue+15},90%,80%,${(orb.innerAlpha*pulse).toFixed(3)})`);
+          ig.addColorStop(0.6, `hsla(${orb.hue},80%,60%,${(orb.innerAlpha*pulse*0.4).toFixed(3)})`);
+          ig.addColorStop(1,   `hsla(${orb.hue},70%,40%,0)`);
+          ctx2d.beginPath();
+          ctx2d.arc(orb.x, orb.y, innerR, 0, Math.PI*2);
+          ctx2d.fillStyle = ig;
+          ctx2d.fill();
+        });
+
+        /* Vignette */
+        const vig = ctx2d.createRadialGradient(W2/2, H2/2, H2*0.05, W2/2, H2/2, H2*0.82);
+        vig.addColorStop(0, 'rgba(0,0,0,0)');
+        vig.addColorStop(1, 'rgba(0,3,15,0.68)');
+        ctx2d.fillStyle = vig;
+        ctx2d.fillRect(0, 0, W2, H2);
+
+        raf2d = requestAnimationFrame(frame);
+      }
+      raf2d = requestAnimationFrame(frame);
+    }
+
+    /* ────────────────────────────────────────────────
+       Switch logic
+    ─────────────────────────────────────────────────*/
+    function applyBg(name, save) {
+      /* Stop any running 2d loop */
+      if (raf2d) { cancelAnimationFrame(raf2d); raf2d = null; }
+      ctx2d.clearRect(0, 0, W2, H2);
+
+      /* Update active state on options */
+      options.forEach(o => o.classList.toggle('active', o.dataset.bg === name));
+      currentBg = name;
+      if (save) setCookie('f3k_bg', name, 365);
+
+      if (name === 'fluid') {
+        glCanvas.style.display = 'block';
+        c2d.style.display = 'none';
+        document.body.style.background = '#0d1117';
+      } else if (name === 'lines') {
+        startLines();
+      } else if (name === 'orbs') {
+        startOrbs();
+      }
+
+      /* Animate canvas transition — crossfade via opacity */
+      const target = name === 'fluid' ? glCanvas : c2d;
+      target.style.opacity = '0';
+      target.style.transition = 'opacity 0.7s ease';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => { target.style.opacity = '1'; });
+      });
+    }
+
+    /* ── Toggle dropdown ── */
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      dropdown.classList.toggle('open');
+    });
+    document.addEventListener('click', () => dropdown.classList.remove('open'));
+    dropdown.addEventListener('click', e => e.stopPropagation());
+
+    options.forEach(opt => {
+      opt.addEventListener('click', () => {
+        applyBg(opt.dataset.bg, true);
+        dropdown.classList.remove('open');
+      });
+    });
+
+    /* ── Fade in switcher with music player ── */
+    setTimeout(() => {
+      switcher.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+      switcher.style.opacity = '1';
+      switcher.style.transform = 'translateY(0)';
+    }, 1900);
+
+    /* ── Apply saved bg on load ── */
+    applyBg(currentBg, false);
+
+  })();
+  </script>
   <script src="discord.js?v=2"></script>
   <script src="typewriter.js?v=2"></script>
   <script>
