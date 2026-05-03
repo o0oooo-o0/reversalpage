@@ -1,164 +1,185 @@
-/* bg.js — Canvas parallax con líneas orgánicas animadas */
+/* bg.js — Liquid parallax background */
 (function () {
   const canvas = document.getElementById('bg-canvas');
-  const ctx = canvas.getContext('2d');
+  const ctx    = canvas.getContext('2d');
 
-  let W, H, mouse = { x: 0.5, y: 0.5 };
-  let lines = [];
-  let raf;
+  let W, H;
+  let mouse = { x: 0.5, y: 0.5 };
+  let target = { x: 0.5, y: 0.5 };
 
-  // Paleta de colores fría/oscura — tonos azules, violetas, grises
+  // Blue palette
   const PALETTE = [
-    [88,  101, 242],   // blurple Discord
-    [59,  165, 92],    // verde
-    [250, 166, 26],    // amarillo
-    [237, 66,  69],    // rojo
-    [114, 137, 218],   // azul suave
+    [88,  101, 242],  // discord blurple
+    [58,  120, 255],  // bright blue
+    [30,  80,  200],  // deep blue
+    [100, 160, 255],  // sky blue
+    [20,  50,  160],  // navy
+    [140, 180, 255],  // light blue
   ];
+
+  let blobs = [];
+  let lines = [];
+
+  /* ── BLOBS (liquid base) ── */
+  function makeBlob() {
+    const [r,g,b] = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      radius: 120 + Math.random() * 220,
+      alpha: 0.04 + Math.random() * 0.09,
+      r, g, b,
+      px: (Math.random() - 0.5) * 120,
+      py: (Math.random() - 0.5) * 120,
+    };
+  }
+
+  /* ── LINES (flowing) ── */
+  function makeLine() {
+    const [r,g,b] = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+    const segs = 5 + Math.floor(Math.random() * 5);
+    const pts  = [];
+    let cx = Math.random() * W;
+    let cy = Math.random() * H;
+    for (let i = 0; i <= segs; i++) {
+      pts.push({ x: cx, y: cy });
+      cx += (Math.random() - 0.5) * W * 0.55;
+      cy += (Math.random() - 0.5) * H * 0.55;
+    }
+    return {
+      pts, r, g, b,
+      alpha: 0,
+      targetAlpha: 0.05 + Math.random() * 0.12,
+      baseW: 0.6 + Math.random() * 3,
+      wAmp:  0.3 + Math.random() * 1.5,
+      wFreq: 0.3 + Math.random() * 1.0,
+      speed: 0.0004 + Math.random() * 0.0007,
+      offset: Math.random() * Math.PI * 2,
+      px: (Math.random() - 0.5) * 80,
+      py: (Math.random() - 0.5) * 80,
+      life: 0,
+      maxLife: 280 + Math.random() * 420,
+    };
+  }
 
   function resize() {
     W = canvas.width  = window.innerWidth;
     H = canvas.height = window.innerHeight;
-    initLines();
+    init();
   }
 
-  /* Crea una línea orgánica con múltiples puntos de control */
-  function makeLine() {
-    const color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-    const segments = 6 + Math.floor(Math.random() * 4);
-    const points = [];
-
-    // Punto de inicio aleatorio en cualquier borde
-    const edge = Math.floor(Math.random() * 4);
-    let sx, sy;
-    if (edge === 0) { sx = Math.random() * W; sy = 0; }
-    else if (edge === 1) { sx = W; sy = Math.random() * H; }
-    else if (edge === 2) { sx = Math.random() * W; sy = H; }
-    else { sx = 0; sy = Math.random() * H; }
-
-    let cx = sx, cy = sy;
-    for (let i = 0; i <= segments; i++) {
-      points.push({ x: cx, y: cy });
-      cx += (Math.random() - 0.5) * W * 0.6;
-      cy += (Math.random() - 0.5) * H * 0.6;
-    }
-
-    return {
-      points,
-      color,
-      alpha: 0,
-      targetAlpha: 0.04 + Math.random() * 0.1,
-      baseWidth: 0.5 + Math.random() * 3.5,
-      widthAmp:  0.3 + Math.random() * 1.8,   // amplitude of thickness oscillation
-      widthFreq: 0.4 + Math.random() * 1.2,   // frequency
-      speed: 0.0003 + Math.random() * 0.0006,
-      offset: Math.random() * Math.PI * 2,
-      parallaxX: (Math.random() - 0.5) * 80,
-      parallaxY: (Math.random() - 0.5) * 80,
-      life: 0,
-      maxLife: 300 + Math.random() * 400,
-    };
-  }
-
-  function initLines() {
-    lines = [];
-    const count = Math.max(14, Math.floor((W * H) / 80000));
-    for (let i = 0; i < count; i++) {
+  function init() {
+    blobs = Array.from({ length: 10 }, makeBlob);
+    lines = Array.from({ length: Math.max(12, Math.floor(W * H / 70000)) }, () => {
       const l = makeLine();
-      l.life = Math.random() * l.maxLife; // empieza en punto aleatorio del ciclo
-      lines.push(l);
-    }
+      l.life = Math.random() * l.maxLife;
+      return l;
+    });
   }
 
-  /* Dibuja una curva catmull-rom suavizada */
-  function drawCurve(pts, offsetX, offsetY) {
+  function drawCurve(pts, ox, oy) {
     if (pts.length < 2) return;
     ctx.beginPath();
-    ctx.moveTo(pts[0].x + offsetX, pts[0].y + offsetY);
+    ctx.moveTo(pts[0].x + ox, pts[0].y + oy);
     for (let i = 1; i < pts.length - 1; i++) {
-      const mx = (pts[i].x + pts[i + 1].x) / 2;
-      const my = (pts[i].y + pts[i + 1].y) / 2;
-      ctx.quadraticCurveTo(
-        pts[i].x + offsetX,
-        pts[i].y + offsetY,
-        mx + offsetX,
-        my + offsetY
-      );
+      const mx = (pts[i].x + pts[i+1].x) / 2;
+      const my = (pts[i].y + pts[i+1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x + ox, pts[i].y + oy, mx + ox, my + oy);
     }
     const last = pts[pts.length - 1];
-    ctx.lineTo(last.x + offsetX, last.y + offsetY);
+    ctx.lineTo(last.x + ox, last.y + oy);
   }
 
   function draw(ts) {
     ctx.clearRect(0, 0, W, H);
 
-    const t = ts * 0.001;
-
-    // Parallax offset suave basado en posición del mouse
+    const t  = ts * 0.001;
     const px = (mouse.x - 0.5) * 2;
     const py = (mouse.y - 0.5) * 2;
 
-    for (let l of lines) {
+    /* ── Draw blobs ── */
+    for (const b of blobs) {
+      // Liquid drift
+      b.x += b.vx + Math.sin(t * 0.4 + b.offset2) * 0.4;
+      b.y += b.vy + Math.cos(t * 0.35 + b.offset2) * 0.4;
+
+      // Wrap
+      if (b.x < -b.radius) b.x = W + b.radius;
+      if (b.x > W + b.radius) b.x = -b.radius;
+      if (b.y < -b.radius) b.y = H + b.radius;
+      if (b.y > H + b.radius) b.y = -b.radius;
+
+      const ox = b.px * px + Math.sin(t * 0.6 + b.offset2) * 18;
+      const oy = b.py * py + Math.cos(t * 0.5 + b.offset2) * 18;
+
+      // Pulsing radius for liquid feel
+      const pulse = b.radius * (1 + Math.sin(t * 0.8 + b.offset2) * 0.12);
+
+      const grad = ctx.createRadialGradient(
+        b.x + ox, b.y + oy, 0,
+        b.x + ox, b.y + oy, pulse
+      );
+      grad.addColorStop(0,   `rgba(${b.r},${b.g},${b.b},${b.alpha})`);
+      grad.addColorStop(0.5, `rgba(${b.r},${b.g},${b.b},${b.alpha * 0.4})`);
+      grad.addColorStop(1,   `rgba(${b.r},${b.g},${b.b},0)`);
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(b.x + ox, b.y + oy, pulse, pulse * (0.85 + Math.sin(t * 0.7 + b.offset2) * 0.15), t * 0.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    /* ── Draw lines ── */
+    for (const l of lines) {
       l.life++;
+      const prog = l.life / l.maxLife;
 
-      // Ciclo de vida: fade in → sostenido → fade out → reset
-      const progress = l.life / l.maxLife;
-      if (progress < 0.15) {
-        l.alpha = l.targetAlpha * (progress / 0.15);
-      } else if (progress < 0.75) {
-        l.alpha = l.targetAlpha;
-      } else {
-        l.alpha = l.targetAlpha * (1 - (progress - 0.75) / 0.25);
-      }
+      if      (prog < 0.15) l.alpha = l.targetAlpha * (prog / 0.15);
+      else if (prog < 0.75) l.alpha = l.targetAlpha;
+      else                  l.alpha = l.targetAlpha * (1 - (prog - 0.75) / 0.25);
 
-      if (l.life >= l.maxLife) {
-        // Regenerar línea
-        Object.assign(l, makeLine());
-        continue;
-      }
+      if (l.life >= l.maxLife) { Object.assign(l, makeLine()); continue; }
 
-      // Movimiento orgánico: desplazar puntos con seno
-      const wave = Math.sin(t * l.speed * 1000 + l.offset) * 15;
-      const ox = l.parallaxX * px + wave;
-      const oy = l.parallaxY * py + Math.cos(t * l.speed * 800 + l.offset) * 12;
+      const wave = Math.sin(t * l.wFreq * 2 + l.offset) * 18;
+      const ox = l.px * px + wave;
+      const oy = l.py * py + Math.cos(t * l.wFreq * 1.5 + l.offset) * 14;
 
-      // Animate thickness over time
-      const animWidth = l.baseWidth + Math.sin(t * l.widthFreq + l.offset) * l.widthAmp;
+      const animW = Math.max(0.2, l.baseW + Math.sin(t * l.wFreq + l.offset) * l.wAmp);
 
-      const [r, g, b] = l.color;
-      ctx.strokeStyle = `rgba(${r},${g},${b},${l.alpha.toFixed(3)})`;
-      ctx.lineWidth = Math.max(0.2, animWidth);
-      ctx.lineCap = 'round';
+      ctx.strokeStyle = `rgba(${l.r},${l.g},${l.b},${l.alpha.toFixed(3)})`;
+      ctx.lineWidth = animW;
+      ctx.lineCap  = 'round';
       ctx.lineJoin = 'round';
 
-      drawCurve(l.points, ox, oy);
+      drawCurve(l.pts, ox, oy);
       ctx.stroke();
     }
 
-    raf = requestAnimationFrame(draw);
+    requestAnimationFrame(draw);
   }
 
-  // Seguir el mouse suavemente
-  let targetMouse = { x: 0.5, y: 0.5 };
-  window.addEventListener('mousemove', e => {
-    targetMouse.x = e.clientX / W;
-    targetMouse.y = e.clientY / H;
-  });
+  // Smooth mouse follow
+  window.addEventListener('mousemove', e => { target.x = e.clientX / W; target.y = e.clientY / H; });
   window.addEventListener('touchmove', e => {
-    const t = e.touches[0];
-    targetMouse.x = t.clientX / W;
-    targetMouse.y = t.clientY / H;
+    target.x = e.touches[0].clientX / W;
+    target.y = e.touches[0].clientY / H;
   }, { passive: true });
 
-  // Lerp del mouse
-  function lerpMouse() {
-    mouse.x += (targetMouse.x - mouse.x) * 0.04;
-    mouse.y += (targetMouse.y - mouse.y) * 0.04;
+  (function lerpMouse() {
+    mouse.x += (target.x - mouse.x) * 0.05;
+    mouse.y += (target.y - mouse.y) * 0.05;
     requestAnimationFrame(lerpMouse);
+  })();
+
+  // Init missing offset2
+  function init2() {
+    blobs.forEach(b => b.offset2 = Math.random() * Math.PI * 2);
   }
-  lerpMouse();
 
   window.addEventListener('resize', resize);
   resize();
+  init2();
   requestAnimationFrame(draw);
 })();
