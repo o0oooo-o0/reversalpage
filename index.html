@@ -228,31 +228,45 @@
       bottom: 0; left: 0; right: 0;
       z-index: 20;
       display: flex; justify-content: center; align-items: center;
-      padding: 1.1rem 1.5rem;
-      /* Glass strip */
-      background: linear-gradient(to top, rgba(8,14,30,0.85) 0%, rgba(8,14,30,0.0) 100%);
-      /* Start off-screen, lerp in via JS */
+      padding: 1.2rem 1.5rem 1.4rem;
+      background: linear-gradient(to top, rgba(4,8,20,0.92) 0%, rgba(4,8,20,0.0) 100%);
       transform: translateY(60px);
       opacity: 0;
       pointer-events: none;
-      transition: none; /* JS handles lerp */
+      transition: none;
     }
 
     .footer-text {
       font-family: 'DM Sans', sans-serif;
       font-size: clamp(0.68rem, 1.8vw, 0.82rem);
-      color: rgba(122, 144, 184, 0.6);
+      color: rgba(140, 168, 210, 0.85);
       letter-spacing: 0.02em;
       text-align: center;
       pointer-events: auto;
+      /* Glass pill background */
+      background: rgba(8, 16, 38, 0.72);
+      border: 1px solid rgba(79, 127, 255, 0.14);
+      border-radius: 100px;
+      padding: 0.42rem 1.1rem;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03) inset;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.15rem;
+      flex-wrap: wrap;
+      justify-content: center;
     }
 
     .footer-text a {
-      color: rgba(100, 160, 255, 0.75);
+      color: rgba(110, 170, 255, 0.9);
       text-decoration: none;
-      transition: color 0.3s;
+      transition: color 0.25s, text-shadow 0.25s;
     }
-    .footer-text a:hover { color: #7ab4ff; }
+    .footer-text a:hover {
+      color: #a8d0ff;
+      text-shadow: 0 0 12px rgba(100,160,255,0.5);
+    }
 
     /* ── MUSIC PLAYER ── */
     .music-player {
@@ -497,88 +511,211 @@
     audio.addEventListener('play',  syncIcon);
     audio.addEventListener('pause', syncIcon);
 
-    /* ── RIPPLE / 3D LIQUID SURFACE DISTURBANCE ── */
+    /* ── RIPPLE / WAVE CANVAS ── */
     const rc   = document.getElementById('ripple-canvas');
     const rctx = rc.getContext('2d');
     let RW, RH;
-
     function resizeRipple() { RW = rc.width = window.innerWidth; RH = rc.height = window.innerHeight; }
     resizeRipple();
     window.addEventListener('resize', resizeRipple);
 
-    const ripples = [];
+    /* ─────────────────────────────────────────
+       WATER SURFACE SIMULATION
+       Each "splash" generates:
+         - 3-5 expanding ring waves
+         - inner capillary rings (fast, small)
+         - a foam/splash burst (tiny dots)
+         - a fading wake trail when moving
+       ───────────────────────────────────────── */
+    const waves     = [];   // ring waves
+    const foam      = [];   // foam particles
+    const wakeTrail = [];   // motion trail segments
 
-    function spawnRipple(x, y, strength) {
-      const s = strength || 1;
-      // Multiple rings per splash for realistic water
-      const rings = 2 + Math.floor(Math.random() * 2);
-      for (let i = 0; i < rings; i++) {
-        ripples.push({
+    function spawnSplash(x, y, strength, isMove) {
+      const s = Math.min(strength || 1, 2.2);
+
+      if (!isMove) {
+        /* Primary wave rings */
+        const rings = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < rings; i++) {
+          waves.push({
+            x, y,
+            r: i * 4,
+            maxR: (70 + Math.random() * 60) * s,
+            alpha: (0.28 + Math.random() * 0.1) * Math.min(s, 1.5),
+            speed: (2.2 + Math.random() * 1.4) * (1 - i * 0.12),
+            lineW: 1.8 - i * 0.25,
+            specAngle: Math.random() * Math.PI * 2,
+            specLen: Math.PI * (0.12 + Math.random() * 0.18),
+            /* secondary micro wave inside */
+            inner: i === 0,
+            innerR: 0,
+            innerMaxR: 18 + Math.random() * 14,
+            innerAlpha: 0.4 * s,
+          });
+        }
+
+        /* Capillary ripples — fast tight rings */
+        for (let i = 0; i < 5; i++) {
+          waves.push({
+            x: x + (Math.random()-0.5)*8*s,
+            y: y + (Math.random()-0.5)*8*s,
+            r: 0, maxR: 12 + Math.random() * 16,
+            alpha: 0.18 * s,
+            speed: 3.5 + Math.random() * 2.5,
+            lineW: 0.7,
+            specAngle: 0, specLen: 0,
+            inner: false,
+          });
+        }
+
+        /* Foam burst particles */
+        const fCount = Math.floor(8 + Math.random() * 10 * s);
+        for (let i = 0; i < fCount; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = (1.0 + Math.random() * 2.5) * s;
+          foam.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            r: 1.2 + Math.random() * 2.5,
+            alpha: 0.35 + Math.random() * 0.2,
+            life: 1.0,
+            decay: 0.028 + Math.random() * 0.02,
+          });
+        }
+      } else {
+        /* Mouse move — wake trail ring (lighter) */
+        waves.push({
           x, y,
-          r: i * 6,
-          maxR: (55 + Math.random() * 45) * s,
-          alpha: (0.22 + Math.random() * 0.12) * s,
-          speed: (1.4 + Math.random() * 1.0) * (1 - i * 0.15),
-          lineW: 1.5 - i * 0.3,
-          // Specular highlight angle
+          r: 0, maxR: (28 + Math.random() * 22) * Math.min(s, 1.2),
+          alpha: 0.11 * Math.min(s, 1.2),
+          speed: 1.6 + Math.random() * 0.8,
+          lineW: 1.1,
           specAngle: Math.random() * Math.PI * 2,
+          specLen: Math.PI * 0.15,
+          inner: false,
         });
+
+        /* Wake elongated disturbance */
+        wakeTrail.push({ x, y, alpha: 0.09 * Math.min(s, 1.2), life: 1.0 });
       }
     }
 
-    let lastX = -1, lastY = -1;
+    let lastX = -999, lastY = -999, lastTime = 0;
     window.addEventListener('mousemove', e => {
       const dx = e.clientX - lastX, dy = e.clientY - lastY;
       const dist2 = dx*dx + dy*dy;
-      if (dist2 > 300) {
-        const strength = Math.min(1.5, Math.sqrt(dist2) / 30);
-        spawnRipple(e.clientX, e.clientY, strength);
-        lastX = e.clientX; lastY = e.clientY;
+      const now = performance.now();
+      if (dist2 > 180) {
+        const speed = Math.min(2.5, Math.sqrt(dist2) / 22);
+        spawnSplash(e.clientX, e.clientY, speed, true);
+        /* Occasional bigger splash if moving fast */
+        if (speed > 1.4 && Math.random() < 0.3) {
+          spawnSplash(e.clientX, e.clientY, speed * 0.6, false);
+        }
+        lastX = e.clientX; lastY = e.clientY; lastTime = now;
       }
     });
+    window.addEventListener('click', e => {
+      spawnSplash(e.clientX, e.clientY, 1.8, false);
+    });
     window.addEventListener('touchmove', e => {
-      spawnRipple(e.touches[0].clientX, e.touches[0].clientY, 1);
+      spawnSplash(e.touches[0].clientX, e.touches[0].clientY, 1.1, false);
+    }, { passive: true });
+    window.addEventListener('touchstart', e => {
+      spawnSplash(e.touches[0].clientX, e.touches[0].clientY, 1.6, false);
     }, { passive: true });
 
     (function tickRipple() {
       rctx.clearRect(0, 0, RW, RH);
 
-      for (let i = ripples.length - 1; i >= 0; i--) {
-        const rp = ripples[i];
+      /* ── Wake trail ── */
+      for (let i = wakeTrail.length - 1; i >= 0; i--) {
+        const w = wakeTrail[i];
+        w.life -= 0.045;
+        if (w.life <= 0) { wakeTrail.splice(i, 1); continue; }
+        const a = w.alpha * w.life * w.life;
+        rctx.beginPath();
+        rctx.arc(w.x, w.y, 3, 0, Math.PI*2);
+        rctx.fillStyle = `rgba(140,200,255,${a.toFixed(3)})`;
+        rctx.fill();
+      }
+
+      /* ── Wave rings ── */
+      for (let i = waves.length - 1; i >= 0; i--) {
+        const rp = waves[i];
         rp.r += rp.speed;
+
+        /* Slow down as it expands — drag */
+        rp.speed *= 0.994;
+
         const prog = rp.r / rp.maxR;
-        if (prog >= 1) { ripples.splice(i, 1); continue; }
+        if (prog >= 1) { waves.splice(i, 1); continue; }
 
-        // Ease out opacity
-        const a = rp.alpha * (1 - prog * prog);
+        /* Ease-out^2 fade */
+        const eased = 1 - prog * prog;
+        const a = rp.alpha * eased;
 
-        // ── Main ring ──
+        /* ── Main ring ── */
         rctx.beginPath();
         rctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
-        rctx.strokeStyle = `rgba(100,160,255,${(a * 0.6).toFixed(3)})`;
-        rctx.lineWidth = rp.lineW * (1 + (1 - prog) * 1.5);
+        /* Slightly warmer color near surface */
+        const g = Math.floor(140 + prog * 30);
+        rctx.strokeStyle = `rgba(80,${g},255,${(a * 0.55).toFixed(3)})`;
+        rctx.lineWidth = rp.lineW * (1 + (1 - prog) * 2.0);
         rctx.stroke();
 
-        // ── Specular highlight arc (bright spot on ring = 3D illusion) ──
-        const arcLen = Math.PI * 0.25 * (1 - prog * 0.5);
-        rctx.beginPath();
-        rctx.arc(rp.x, rp.y, rp.r, rp.specAngle - arcLen, rp.specAngle + arcLen);
-        const specA = a * 2.5;
-        rctx.strokeStyle = `rgba(200,230,255,${Math.min(1, specA).toFixed(3)})`;
-        rctx.lineWidth = rp.lineW * 2.2;
-        rctx.stroke();
-
-        // ── Inner glow fill (subsurface scatter illusion) ──
-        if (prog < 0.5 && rp.r > 4) {
-          const grad = rctx.createRadialGradient(rp.x, rp.y, rp.r * 0.6, rp.x, rp.y, rp.r);
-          grad.addColorStop(0, `rgba(60,120,255,0)`);
-          grad.addColorStop(1, `rgba(80,140,255,${(a * 0.08).toFixed(3)})`);
+        /* ── Specular arc — bright glint on ring ── */
+        if (rp.specLen > 0) {
           rctx.beginPath();
-          rctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+          rctx.arc(rp.x, rp.y, rp.r, rp.specAngle - rp.specLen, rp.specAngle + rp.specLen);
+          const sa = Math.min(1, a * 2.8);
+          rctx.strokeStyle = `rgba(210,235,255,${sa.toFixed(3)})`;
+          rctx.lineWidth = rp.lineW * 1.8;
+          rctx.stroke();
+        }
+
+        /* ── Inner glow (subsurface scatter) ── */
+        if (prog < 0.45 && rp.r > 6) {
+          const grad = rctx.createRadialGradient(rp.x, rp.y, rp.r*0.55, rp.x, rp.y, rp.r);
+          grad.addColorStop(0, `rgba(40,90,200,0)`);
+          grad.addColorStop(1, `rgba(60,120,255,${(a * 0.06).toFixed(3)})`);
+          rctx.beginPath();
+          rctx.arc(rp.x, rp.y, rp.r, 0, Math.PI*2);
           rctx.fillStyle = grad;
           rctx.fill();
         }
+
+        /* ── Inner capillary ring ── */
+        if (rp.inner && rp.innerR < rp.innerMaxR) {
+          rp.innerR += 2.8;
+          const ip = rp.innerR / rp.innerMaxR;
+          const ia = rp.innerAlpha * (1 - ip) * eased;
+          rctx.beginPath();
+          rctx.arc(rp.x, rp.y, rp.innerR, 0, Math.PI*2);
+          rctx.strokeStyle = `rgba(160,210,255,${ia.toFixed(3)})`;
+          rctx.lineWidth = 0.8;
+          rctx.stroke();
+        }
       }
+
+      /* ── Foam particles ── */
+      for (let i = foam.length - 1; i >= 0; i--) {
+        const f = foam[i];
+        f.x  += f.vx;
+        f.y  += f.vy;
+        f.vx *= 0.93;
+        f.vy *= 0.93;
+        f.life -= f.decay;
+        if (f.life <= 0) { foam.splice(i, 1); continue; }
+        const fa = f.alpha * f.life * f.life;
+        rctx.beginPath();
+        rctx.arc(f.x, f.y, f.r * f.life, 0, Math.PI*2);
+        rctx.fillStyle = `rgba(190,225,255,${fa.toFixed(3)})`;
+        rctx.fill();
+      }
+
       requestAnimationFrame(tickRipple);
     })();
   })();
