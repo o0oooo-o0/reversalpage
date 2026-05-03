@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>F3kel666</title>
+  <title>F3 — Profile</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:      #1a1c1f;
-      --surface: rgba(30, 32, 37, 0.75);
-      --border:  rgba(255,255,255,0.08);
-      --text:    #e8eaed;
-      --muted:   #8b8fa8;
-      --accent:  #5865f2;
+      --bg:      #0d1117;
+      --surface: rgba(14, 22, 45, 0.78);
+      --border:  rgba(88, 101, 242, 0.18);
+      --text:    #dce8ff;
+      --muted:   #7a90b8;
+      --accent:  #4f7fff;
       --online:  #3ba55c;
       --idle:    #faa61a;
       --dnd:     #ed4245;
@@ -23,8 +23,7 @@
     }
 
     html, body {
-      width: 100%; height: 100%;
-      overflow: hidden;
+      width: 100%; height: 100%; overflow: hidden;
       background: var(--bg);
       font-family: 'DM Sans', sans-serif;
       color: var(--text);
@@ -39,26 +38,26 @@
     /* ── LAYOUT ── */
     .main {
       position: relative; z-index: 10;
-      display: flex; flex-direction: column;
-      align-items: center;
-      /* centro-arriba: empieza a 20% del alto */
+      display: flex; flex-direction: column; align-items: center;
       padding-top: 18vh;
       width: 100%; height: 100vh;
     }
 
     /* ── CARD ── */
     .card {
-      display: flex; flex-direction: row;
-      align-items: center;
+      display: flex; flex-direction: row; align-items: center;
       gap: 1.8rem;
       width: min(480px, 92vw);
       padding: 1.8rem 2rem;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 18px;
-      backdrop-filter: blur(28px) saturate(160%);
-      -webkit-backdrop-filter: blur(28px) saturate(160%);
-      box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04) inset;
+      backdrop-filter: blur(32px) saturate(180%);
+      -webkit-backdrop-filter: blur(32px) saturate(180%);
+      box-shadow:
+        0 0 0 1px rgba(79,127,255,0.08) inset,
+        0 24px 64px rgba(0,0,0,0.6),
+        0 0 40px rgba(58,120,255,0.08);
       opacity: 0;
       transform: translateY(-50px) scale(0.97);
       animation: slideIn 0.8s cubic-bezier(0.34,1.4,0.64,1) 1s forwards;
@@ -68,34 +67,26 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* ── AVATAR — círculo perfecto garantizado ── */
-    .avatar-wrap {
-      /* Contenedor cuadrado rígido */
+    /* ── AVATAR ── */
+    .avatar-outer {
       position: relative;
-      width: 90px;
-      height: 90px;
-      flex: 0 0 90px;   /* no crece, no encoge */
+      width: 90px; height: 90px;
+      flex: 0 0 90px;
       align-self: center;
+    }
+
+    /* El clip circular real: contenedor cuadrado + overflow hidden */
+    .avatar-wrap {
+      width: 90px; height: 90px;
       border-radius: 50%;
-      overflow: hidden;  /* recorta la imagen en círculo */
+      overflow: hidden;
+      position: relative; z-index: 1;
     }
 
     .avatar-wrap img {
-      /* Llena exactamente el contenedor */
       display: block;
-      width: 90px;
-      height: 90px;
-      object-fit: cover;
-      object-position: center;
-    }
-
-    /* Ring y dot fuera del overflow:hidden para que no se corten */
-    .avatar-outer {
-      position: relative;
-      width: 90px;
-      height: 90px;
-      flex: 0 0 90px;
-      align-self: center;
+      width: 90px; height: 90px;
+      object-fit: cover; object-position: center;
     }
 
     .status-ring {
@@ -103,18 +94,16 @@
       border-radius: 50%;
       border: 2.5px solid transparent;
       transition: border-color 0.5s, box-shadow 0.5s;
-      pointer-events: none;
     }
-    .status-ring.online  { border-color: var(--online);  box-shadow: 0 0 14px rgba(59,165,92,0.45); }
-    .status-ring.idle    { border-color: var(--idle);    box-shadow: 0 0 14px rgba(250,166,26,0.45); }
-    .status-ring.dnd     { border-color: var(--dnd);     box-shadow: 0 0 14px rgba(237,66,69,0.45); }
+    .status-ring.online  { border-color: var(--online);  box-shadow: 0 0 14px rgba(59,165,92,0.4); }
+    .status-ring.idle    { border-color: var(--idle);    box-shadow: 0 0 14px rgba(250,166,26,0.4); }
+    .status-ring.dnd     { border-color: var(--dnd);     box-shadow: 0 0 14px rgba(237,66,69,0.4); }
     .status-ring.offline { border-color: var(--offline); box-shadow: none; }
 
     .status-dot {
       position: absolute; bottom: 2px; right: 2px;
-      width: 22px; height: 22px;
-      border-radius: 50%;
-      border: 3.5px solid #1e2025;
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 3.5px solid #0d1421;
       background: var(--offline);
       transition: background 0.5s;
       display: flex; justify-content: center; align-items: center;
@@ -125,66 +114,85 @@
       content: ""; position: absolute;
       top: -3px; left: -2px;
       width: 15px; height: 15px;
-      border-radius: 50%; background: #1e2025;
+      border-radius: 50%; background: #0d1421;
     }
     .status-dot.dnd { background: var(--dnd); }
-    .status-dot.dnd::after {
-      content: ""; width: 58%; height: 18%;
-      background: #1e2025; border-radius: 8px;
-    }
+    .status-dot.dnd::after { content: ""; width: 58%; height: 18%; background: #0d1421; border-radius: 8px; }
     .status-dot.offline { background: var(--offline); }
-    .status-dot.offline::after {
-      content: ""; width: 40%; height: 40%;
-      background: #1e2025; border-radius: 50%;
-    }
+    .status-dot.offline::after { content: ""; width: 40%; height: 40%; background: #0d1421; border-radius: 50%; }
 
     /* ── INFO ── */
     .card-info {
-      display: flex; flex-direction: column;
-      gap: 0.4rem;
+      display: flex; flex-direction: column; gap: 0.42rem;
+      min-width: 0;
+    }
+
+    /* Username row con badge al lado */
+    .username-row {
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+
+    /* ── ANIMATED BLUE GRADIENT TEXT ── */
+    @keyframes gradShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
 
     .username {
       font-family: 'Space Mono', monospace;
       font-size: 1.25rem; font-weight: 700;
-      letter-spacing: -0.02em; color: var(--text);
-      line-height: 1;
+      letter-spacing: -0.02em; line-height: 1;
+      background: linear-gradient(120deg, #a8c8ff, #5888ff, #1a4fff, #6fa8ff, #a8c8ff);
+      background-size: 300% 300%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradShift 4s ease infinite;
     }
 
     .display-name {
-      font-size: 0.82rem; color: var(--muted); font-weight: 300;
+      font-size: 0.82rem; font-weight: 300;
+      background: linear-gradient(120deg, #7aabff, #3a6ecc, #1040bb, #5a90ee, #7aabff);
+      background-size: 300% 300%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradShift 5s ease infinite;
+    }
+
+    /* Badge imagen al lado del username */
+    .username-badge {
+      width: 22px; height: 22px;
+      object-fit: contain;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 4px rgba(79,127,255,0.6));
     }
 
     .custom-status {
       display: inline-flex; align-items: center; gap: 0.45rem;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border);
+      background: rgba(58,100,255,0.08);
+      border: 1px solid rgba(79,127,255,0.15);
       border-radius: 100px;
       padding: 0.28rem 0.75rem;
-      margin-top: 0.15rem;
+      margin-top: 0.1rem;
       max-width: 100%;
     }
     .custom-status-emoji { font-size: 0.95rem; flex-shrink: 0; }
-    .custom-status-text {
+    .custom-status-text  {
       font-size: 0.78rem; color: var(--muted);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      max-width: 200px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
     }
 
-    .status-badge { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.1rem; }
-    .badge-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--offline); flex-shrink: 0; transition: background 0.5s;
-    }
+    .status-badge { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.05rem; }
+    .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--offline); flex-shrink: 0; transition: background 0.5s; }
     .badge-dot.online  { background: var(--online); }
     .badge-dot.idle    { background: var(--idle); }
     .badge-dot.dnd     { background: var(--dnd); }
     .badge-dot.offline { background: var(--offline); }
-
     .badge-label {
-      font-size: 0.72rem; font-weight: 600;
-      letter-spacing: 0.07em; text-transform: uppercase;
-      color: var(--muted); transition: color 0.5s;
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--muted); transition: color 0.5s;
     }
     .badge-label.online  { color: var(--online); }
     .badge-label.idle    { color: var(--idle); }
@@ -193,38 +201,61 @@
 
     /* ── TYPEWRITER ── */
     .typewriter-wrap {
-      margin-top: 2.2rem;
+      margin-top: 2rem;
       display: flex; align-items: center; justify-content: center;
-      height: 1.8rem;
       opacity: 0;
       animation: slideIn 0.5s ease 1.7s forwards;
     }
     .typewriter-text {
       font-family: 'Space Mono', monospace;
-      font-size: 0.9rem; color: var(--muted);
-      letter-spacing: 0.04em;
+      font-size: 0.88rem; color: var(--muted); letter-spacing: 0.04em;
     }
     .typewriter-cursor {
-      display: inline-block;
-      width: 2px; height: 1em;
+      display: inline-block; width: 2px; height: 1em;
       background: var(--accent);
-      margin-left: 3px; vertical-align: middle;
-      border-radius: 1px;
+      margin-left: 3px; vertical-align: middle; border-radius: 1px;
       animation: blink 0.75s step-end infinite;
     }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
+    /* ── FOOTER ── */
+    .footer {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 20;
+      display: flex; justify-content: center; align-items: center;
+      padding: 1.1rem 1.5rem;
+      /* Glass strip */
+      background: linear-gradient(to top, rgba(8,14,30,0.85) 0%, rgba(8,14,30,0.0) 100%);
+      /* Start off-screen, lerp in via JS */
+      transform: translateY(60px);
+      opacity: 0;
+      pointer-events: none;
+      transition: none; /* JS handles lerp */
+    }
+
+    .footer-text {
+      font-family: 'DM Sans', sans-serif;
+      font-size: clamp(0.68rem, 1.8vw, 0.82rem);
+      color: rgba(122, 144, 184, 0.6);
+      letter-spacing: 0.02em;
+      text-align: center;
+      pointer-events: auto;
+    }
+
+    .footer-text a {
+      color: rgba(100, 160, 255, 0.75);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    .footer-text a:hover { color: #7ab4ff; }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 500px) {
-      .main { padding-top: 14vh; }
-      .card {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        gap: 1.2rem;
-        padding: 1.8rem 1.4rem;
-      }
+      .main { padding-top: 12vh; }
+      .card { flex-direction: column; align-items: center; text-align: center; gap: 1.2rem; padding: 1.8rem 1.4rem; }
       .card-info { align-items: center; }
+      .username-row { justify-content: center; }
     }
   </style>
 </head>
@@ -233,10 +264,9 @@
   <canvas id="bg-canvas"></canvas>
 
   <main class="main">
-
     <div class="card" id="profile-card">
-      <!-- Avatar: avatar-outer contiene el ring+dot, avatar-wrap hace el clip circular -->
-      <div class="avatar-outer" id="avatar-outer">
+
+      <div class="avatar-outer">
         <div class="avatar-wrap">
           <img id="avatar-img" src="" alt="Avatar" />
         </div>
@@ -245,8 +275,12 @@
       </div>
 
       <div class="card-info">
-        <h1  class="username"     id="username">—</h1>
-        <p   class="display-name" id="display-name"></p>
+        <div class="username-row">
+          <h1 class="username" id="username">—</h1>
+          <!-- Badge: reemplaza badge.png con tu archivo real en la misma carpeta -->
+          <img class="username-badge" id="username-badge" src="badge.png" alt="badge" onerror="this.style.display='none'" />
+        </div>
+        <p class="display-name" id="display-name"></p>
 
         <div class="custom-status" id="custom-status-wrap">
           <span class="custom-status-emoji" id="custom-emoji"></span>
@@ -261,13 +295,48 @@
     </div>
 
     <div class="typewriter-wrap">
-      <span class="typewriter-text"   id="tw-text"></span><span class="typewriter-cursor"></span>
+      <span class="typewriter-text" id="tw-text"></span><span class="typewriter-cursor"></span>
     </div>
-
   </main>
+
+  <footer class="footer" id="footer">
+    <p class="footer-text">
+      page by f3kel666. founder of <a href="https://reversal.lat" target="_blank">reversal.lat</a> | <a href="https://discord.gg/f3k" target="_blank">discord.gg/f3k</a> and <a href="https://f3kel.lol" target="_blank">f3kel.lol</a>
+    </p>
+  </footer>
 
   <script src="bg.js"></script>
   <script src="discord.js"></script>
   <script src="typewriter.js"></script>
+  <script>
+    // Footer lerp — smooth ease-in like Roblox TweenService
+    (function() {
+      const footer = document.getElementById('footer');
+      let currentY   = 60;
+      let currentOpa = 0;
+      let targetY    = 0;
+      let targetOpa  = 1;
+      const LERP = 0.055; // smoothness — lower = slower/smoother
+
+      // Delay before footer starts appearing
+      setTimeout(() => {
+        targetY   = 0;
+        targetOpa = 1;
+      }, 2200);
+
+      function lerp(a, b, t) { return a + (b - a) * t; }
+
+      function tick() {
+        currentY   = lerp(currentY,   targetY,   LERP);
+        currentOpa = lerp(currentOpa, targetOpa, LERP);
+
+        footer.style.transform = `translateY(${currentY.toFixed(3)}px)`;
+        footer.style.opacity   = currentOpa.toFixed(4);
+
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    })();
+  </script>
 </body>
 </html>
