@@ -109,19 +109,27 @@ html,body { height:100%; background:var(--bg); color:var(--tx); font-family:var(
   position:absolute;
   font-family:var(--fm);
   font-size:12px;
-  color:rgba(26,95,187,0.35);
+  color:rgba(26,95,187,0.45);
   line-height:1.5;
   writing-mode:vertical-rl;
   white-space:nowrap;
   animation:drainFall linear infinite;
-  transform-origin:top center;
-  transform:rotate(-30deg);
+  transform-origin:top left;
+}
+/* line streaks — just a thin rectangle */
+.dr.line {
+  width:1px;
+  background:linear-gradient(to bottom, transparent, rgba(58,143,232,0.55) 20%, rgba(90,170,255,0.7) 50%, rgba(58,143,232,0.4) 80%, transparent);
+  font-size:0;
+  height:clamp(40px,8vh,120px);
+  writing-mode:horizontal-tb;
+  border-radius:1px;
 }
 @keyframes drainFall {
-  0%   { transform:rotate(-30deg) translateY(-120%); opacity:0; }
-  10%  { opacity:1; }
-  90%  { opacity:0.7; }
-  100% { transform:rotate(-30deg) translateY(120vh); opacity:0; }
+  0%   { transform:rotate(-28deg) translateY(-140%); opacity:0; }
+  8%   { opacity:1; }
+  88%  { opacity:1; }
+  100% { transform:rotate(-28deg) translateY(130vh); opacity:0; }
 }
 
 /* ── MATRIX SIDES ── */
@@ -406,9 +414,9 @@ o888o    88ooo88  o888o o888o  88oooo888 o888o  88ooo88     88ooo88     88ooo88
 </div>
 
 <!-- AUDIO -->
-<audio id="bgm" loop><source src="https://f3kel.lol/anotherhim.mp3" type="audio/mpeg"></audio> <!-- sonion -->
+<audio id="bgm" loop><source src="https://f3kel.lol/anotherhim.mp3" type="audio/mpeg"></audio>
 <audio id="sel"><source src="https://f3kel.lol/select.mp3" type="audio/mpeg"></audio>
-<audio id="app"><source src="https://f3kel.lol/appear.mp3" type="audio/mpeg"></audio> 
+<audio id="app"><source src="https://f3kel.lol/appear.mp3" type="audio/mpeg"></audio>
 
 <script>
 const MC = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロｦｧｨｩ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%<>/\\|{}';
@@ -454,20 +462,33 @@ let rt; window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(bui
 function buildRain() {
   const dr = document.getElementById('drain');
   dr.innerHTML='';
-  const count = Math.max(8, Math.floor(window.innerWidth/90));
-  for (let i=0;i<count;i++) {
+  // ~70% lines, ~30% char streams — much denser
+  const total = Math.max(28, Math.floor(window.innerWidth/28));
+  for (let i=0;i<total;i++) {
     const col = document.createElement('div');
-    col.className='dr';
-    const len = 6+Math.floor(Math.random()*14);
-    let s='';
-    for(let j=0;j<len;j++) s+=rc(AL)+'\n';
-    col.textContent=s;
-    col.style.left = (Math.random()*110-10)+'%';
-    col.style.top = (-20-Math.random()*80)+'%';
-    col.style.animationDuration = (8+Math.random()*14)+'s';
-    col.style.animationDelay = (-Math.random()*20)+'s';
-    col.style.fontSize = (9+Math.random()*5)+'px';
-    col.style.opacity = 0.15+Math.random()*0.25+'';
+    const isLine = Math.random() < 0.72;
+    col.className = isLine ? 'dr line' : 'dr';
+
+    if (isLine) {
+      // thin streak — random length
+      const h = 30 + Math.random()*140;
+      col.style.height = h+'px';
+      col.style.opacity = (0.18+Math.random()*0.45)+'';
+      col.style.width = Math.random()<0.3 ? '2px' : '1px';
+    } else {
+      // short char column
+      const len = 3+Math.floor(Math.random()*9);
+      let s='';
+      for(let j=0;j<len;j++) s+=rc(MC)+'\n';
+      col.textContent=s;
+      col.style.fontSize=(9+Math.random()*5)+'px';
+      col.style.opacity=(0.2+Math.random()*0.35)+'';
+    }
+
+    col.style.left = (Math.random()*115-8)+'%';
+    col.style.top  = (-15-Math.random()*100)+'%';
+    col.style.animationDuration = (5+Math.random()*16)+'s';
+    col.style.animationDelay    = (-Math.random()*22)+'s';
     dr.appendChild(col);
   }
 }
@@ -486,7 +507,7 @@ function togMusic(){
   document.getElementById('acbtn').textContent='[music: '+(mus?'on':'off')+']';
 }
 const pSel=()=>{ sel.currentTime=0; sel.play().catch(()=>{}); };
-const pApp=()=>{ app.currentTime=0; app.play().catch(()=>{}); };
+const pApp=()=>{ app.pause(); app.currentTime=0; app.play().catch(()=>{}); };
 
 // ── TYPEWRITER ───────────────────────────────────────────────
 const twEl=document.getElementById('tw');
@@ -572,6 +593,7 @@ function showAbt(){
 function hideAbt(){
   if(!lnkRdy)return;
   abtOn=false;
+  app.pause(); app.currentTime=0;
   abtEl.innerHTML=''; abtEl.classList.remove('on');
   hint.classList.remove('on');
   conEl.style.display='';
@@ -579,11 +601,13 @@ function hideAbt(){
   setTimeout(()=>{ [twln,lnks].forEach(e=>{e.style.opacity='1';}); },30);
 }
 
-function hAbout(){ pSel(); abtOn?hideAbt():showAbt(); }
+function hAbout(){ pSel(); if(abtOn) hideAbt(); else showAbt(); }
 
 document.addEventListener('keydown',e=>{
   if((e.key==='v'||e.key==='V')&&!e.ctrlKey&&!e.metaKey){
-    if(!lnkRdy)return; pSel(); abtOn?hideAbt():showAbt();
+    if(!lnkRdy)return;
+    pSel();
+    if(abtOn) hideAbt(); else showAbt();
   }
 });
 
