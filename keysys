@@ -1,0 +1,47 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua"))()
+
+local Window = Library:CreateWindow({
+    Title = "reversal keysystem",
+    Center = true,
+    AutoShow = true,
+})
+
+local Tabs = {
+    Main = Window:AddTab("Main"),
+}
+
+local LeftGroupBox = Tabs.Main:AddLeftGroupbox("Verify")
+
+LeftGroupBox:AddInput("KeyInput", {
+    Default = "",
+    Numeric = false,
+    Finished = false,
+    Text = "enter key",
+    Placeholder = "type here",
+})
+
+LeftGroupBox:AddButton("Verify", function()
+    local key = Options.KeyInput.Value
+
+    if key == "reversalv2" then
+        Library:Notify("correct key!", 3)
+
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/o0oooo-o0/reversal/refs/heads/main/ReversalPrisonLife.lua"))()
+    else
+        Library:Notify("wrong", 3)
+    end
+end)
+
+LeftGroupBox:AddButton("copy discord invite", function()
+    setclipboard("https://discord.gg/RhdAy7Dm2B")
+    Library:Notify("copied invite to clipboard!", 3)
+end)
+
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+
+ThemeManager:ApplyToTab(Tabs.Main)
+
+Library:Notify("Loaded reversal keysystem", 3)
