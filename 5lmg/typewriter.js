@@ -1,11 +1,11 @@
 /* typewriter.js — Efecto typewriter con cursor parpadeante */
 (function () {
   const PHRASES = [
-    'luau coder',
-    'python coder',
-    'java coder',
-    'exploit coder',
-    'reversal founder',
+    'biggest catboy',
+    'f3kels catboy',
+    'catboy',
+    'exploit finder',
+    'f3kel friend',
   ];
 
   const el = document.getElementById('tw-text');
