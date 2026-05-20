@@ -135,15 +135,16 @@
 
   #card-wrapper.active { display: flex; }
 
-  /* Float animation: suave, multi-axis */
+  /* Float animation — más visible, multi-axis */
   @keyframes floatCard {
-    0%   { transform: translate(0px, 0px) rotate(0deg); }
-    20%  { transform: translate(2px, -4px) rotate(0.15deg); }
-    40%  { transform: translate(-2px, -7px) rotate(-0.1deg); }
-    55%  { transform: translate(3px, -3px) rotate(0.2deg); }
-    70%  { transform: translate(-1px, -6px) rotate(-0.15deg); }
-    85%  { transform: translate(2px, -2px) rotate(0.1deg); }
-    100% { transform: translate(0px, 0px) rotate(0deg); }
+    0%   { transform: translate(0px,   0px)  rotate(0deg);    }
+    15%  { transform: translate(4px,  -10px) rotate(0.4deg);  }
+    30%  { transform: translate(-5px, -16px) rotate(-0.3deg); }
+    45%  { transform: translate(6px,  -8px)  rotate(0.5deg);  }
+    60%  { transform: translate(-4px, -14px) rotate(-0.4deg); }
+    75%  { transform: translate(5px,  -6px)  rotate(0.3deg);  }
+    88%  { transform: translate(-2px, -11px) rotate(-0.2deg); }
+    100% { transform: translate(0px,   0px)  rotate(0deg);    }
   }
 
   #profile-card {
@@ -162,7 +163,7 @@
     transform: translateY(40px);
     animation:
       cardIn 0.9s cubic-bezier(0.16,1,0.3,1) 0.05s forwards,
-      floatCard 6s ease-in-out 1s infinite;
+      floatCard 5s ease-in-out 1s infinite;
     font-family: Arial, sans-serif;
     font-size: 16px;
     line-height: 2;
@@ -186,7 +187,7 @@
 <body>
 
 <div id="step1">
-  <button id="btn" onclick="go()">click to continue</button>
+  <button id="btn" onclick="go()">click to continue.</button>
 </div>
 
 <div id="step2">
@@ -204,12 +205,11 @@
   </div>
 </div>
 
-<audio id="song" src="embers.mp3" preload="auto"></audio>
+<audio id="song" src="embers.mp3" preload="auto" crossorigin="anonymous"></audio>
 
 <script>
 // ═══════════════════════════════════════
-//  LYRICS CONFIG
-//  Todos los tiempos adelantados 0.5s
+//  LYRICS CONFIG — tiempos adelantados 0.5s
 // ═══════════════════════════════════════
 const LYRICS = [
   { t: 4*60+28.5, text: 'pouring out her chest, her sweet little flowers lay wilted' },
@@ -221,29 +221,59 @@ const LYRICS = [
   { t: 4*60+54.5, text: 'Wondering how long these newfound scars will take to blossom' },
   { t: 4*60+58.5, text: 'Little does she know, cutting through her own skin will find no flowers' },
   { t: 5*60+2.5,  text: 'Yet she continues to wail' },
-  { t: 5*60+7.5,  text: 'I LOVE YOU' },
+  { t: 5*60+4.5,  text: 'I LOVE YOU' },
 ];
 
-// El primer lyric aparece 0.5s después del click (song empieza en SONG_START)
-const SONG_START  = 4*60 + 25;
-const SONG_END    = 7*60 + 3;
+const SONG_START = 4*60 + 25;
+const SONG_END   = 7*60 + 3;
 
-// "I LOVE YOU" desaparece 1s después de aparecer (~5:04.5 + 1s = 5:05.5)
-// Flash aparece a la mitad de ese segundo (~5:05s)
-// Fade del step2 dura 1s
-const LOVE_YOU_DISAPPEAR_AT = 5*60 + 5.5; // 1s después de aparecer
-const FLASH_AT              = 5*60 + 5.0; // mitad del segundo
-const FADE_OUT_AT           = 5*60 + 5.0; // fade de 1s empieza aquí
+// Después del I LOVE YOU, cuánto esperar antes de activar el detector
+// El I LOVE YOU aparece en 5:04.5, lo dejamos 1s visible → detector arranca en 5:05.5
+const DETECTION_START_T = 5*60 + 5.5;
+
+// Fallback: si en 1.4s no detecta nada, dispara igual
+const FALLBACK_MS = 1400;
+
+// Umbral de volumen (RMS 0..1). Ajusta si la canción es muy suave/fuerte.
+// Un pico repentino normalmente supera 0.15–0.25 en partes de build-up.
+const VOLUME_THRESHOLD = 0.18;
 // ═══════════════════════════════════════
 
 const song = document.getElementById('song');
 let started = false;
-let shownIndex = -1, currentEl = null;
-let fadeDone = false, flashDone = false, sceneDone = false;
+let shownIndex = -1, currentEl = null, sceneDone = false;
+
+// Audio analysis
+let audioCtx = null, analyser = null, dataArray = null;
+let detectingPeak = false, peakTriggered = false, fallbackTimer = null;
+let baselineRMS = 0, baselineSamples = 0;
+
+function setupAudio() {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaElementSource(song);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    dataArray = new Float32Array(analyser.fftSize);
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+  } catch(e) {
+    console.warn('Web Audio API not available:', e);
+  }
+}
+
+function getRMS() {
+  if (!analyser) return 0;
+  analyser.getFloatTimeDomainData(dataArray);
+  let sum = 0;
+  for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
+  return Math.sqrt(sum / dataArray.length);
+}
 
 function go() {
   if (started) return;
   started = true;
+  setupAudio();
   document.getElementById('step1').classList.add('gone');
   document.getElementById('step2').classList.add('active');
   try {
@@ -266,31 +296,60 @@ function loop() {
     if (t >= LYRICS[i].t) { showLyric(i); shownIndex = i; }
   }
 
-  // "I LOVE YOU" desaparece 1s después, fade out manual
-  if (t >= LOVE_YOU_DISAPPEAR_AT && currentEl && !fadeDone) {
-    fadeDone = true;
-    const el = currentEl;
-    el.classList.remove('fade-in');
-    el.classList.add('fade-out');
-    setTimeout(() => el.remove(), 450);
+  // Acumular baseline de volumen antes de la zona de detección
+  if (t >= SONG_START && t < DETECTION_START_T && analyser && baselineSamples < 300) {
+    const rms = getRMS();
+    if (rms > 0) {
+      baselineRMS = (baselineRMS * baselineSamples + rms) / (baselineSamples + 1);
+      baselineSamples++;
+    }
   }
 
-  // Fade del step2: dura 1s, empieza en FADE_OUT_AT
-  const s2 = document.getElementById('step2');
-  if (t >= FADE_OUT_AT && !s2._fadingOut) {
-    s2._fadingOut = true;
+  // Activar detector tras el I LOVE YOU
+  if (t >= DETECTION_START_T && !detectingPeak && !peakTriggered) {
+    detectingPeak = true;
+
+    // Fade out del I LOVE YOU
+    if (currentEl) {
+      const el = currentEl;
+      el.classList.remove('fade-in');
+      el.classList.add('fade-out');
+      setTimeout(() => el.remove(), 450);
+      currentEl = null;
+    }
+
+    // Fade de step2 (1s)
+    const s2 = document.getElementById('step2');
     s2.style.transition = 'opacity 1s ease';
     s2.style.opacity = '0';
     setTimeout(() => { s2.style.display = 'none'; }, 1000);
+
+    // Fallback: 1.4s después de activar el detector
+    fallbackTimer = setTimeout(() => {
+      if (!peakTriggered) triggerFlash();
+    }, FALLBACK_MS);
   }
 
-  // Flash aparece a mitad del segundo (FLASH_AT), tarda 1s en desaparecer
-  if (t >= FLASH_AT && !flashDone) {
-    flashDone = true;
-    doFlash();
+  // Detectar pico de volumen en tiempo real
+  if (detectingPeak && !peakTriggered && analyser) {
+    const rms = getRMS();
+    // El umbral dinámico es el mayor entre el VOLUME_THRESHOLD fijo
+    // y 2x el baseline (para adaptarse a canciones más suaves/fuertes)
+    const dynamicThreshold = Math.max(VOLUME_THRESHOLD, baselineRMS * 2.0);
+    if (rms > dynamicThreshold) {
+      triggerFlash();
+    }
   }
 
   if (!sceneDone) requestAnimationFrame(loop);
+}
+
+function triggerFlash() {
+  if (peakTriggered) return;
+  peakTriggered = true;
+  detectingPeak = false;
+  clearTimeout(fallbackTimer);
+  doFlash();
 }
 
 function showLyric(i) {
@@ -340,13 +399,11 @@ function doFlash() {
   f.style.opacity = '1';
   f.style.transition = 'none';
 
-  // Flash dura visible un momento, luego fade de 1s
+  // Flash visible brevemente, luego fade de 1s
   setTimeout(() => {
     f.style.transition = 'opacity 1s ease';
     f.style.opacity = '0';
-    setTimeout(() => {
-      f.style.display = 'none';
-    }, 1000);
+    setTimeout(() => { f.style.display = 'none'; }, 1000);
   }, 80);
 
   // Card aparece 0.2s después del flash
