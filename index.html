@@ -10,7 +10,6 @@
   body {
     background: #000;
     color: #fff;
-    font-family: Arial, sans-serif;
     overflow: hidden;
     width: 100vw;
     height: 100vh;
@@ -27,19 +26,23 @@
     align-items: center;
     justify-content: center;
     z-index: 10;
-    cursor: pointer;
   }
 
   #step1.gone { display: none; }
 
-  #click-text {
+  #btn {
+    background: none;
+    border: none;
+    outline: none;
     font-family: 'Courier New', Courier, monospace;
     font-size: 22px;
     color: #00ff41;
     text-shadow: 0 0 8px #00ff41, 0 0 22px #00ff41;
     animation: blink 1s step-start infinite;
     letter-spacing: 0.1em;
-    pointer-events: none;
+    cursor: pointer;
+    padding: 40px 60px;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
   }
 
   @keyframes blink {
@@ -71,7 +74,7 @@
   .lyric-line {
     position: absolute;
     font-family: Arial, sans-serif;
-    font-size: clamp(32px, 6vw, 72px);
+    font-size: clamp(16px, 3.5vw, 48px);
     font-weight: 700;
     color: #fff;
     text-shadow:
@@ -80,9 +83,10 @@
       0 0 60px rgba(255,255,255,0.3);
     opacity: 0;
     pointer-events: none;
-    letter-spacing: 0.05em;
-    width: 90vw;
+    letter-spacing: 0.03em;
+    width: 88vw;
     text-align: center;
+    line-height: 1.4;
   }
 
   .lyric-line.fade-in  { animation: lyricIn  0.5s ease forwards; }
@@ -169,7 +173,7 @@
 <body>
 
 <div id="step1">
-  <span id="click-text">click to continue</span>
+  <button id="btn" onclick="go()">[ CLICK TO CONTINUE ]</button>
 </div>
 
 <div id="step2">
@@ -191,13 +195,13 @@
 
 <script>
 // ═══════════════════════════════════════
-//  LYRICS CONFIG — edita aquí
-//  t = segundos  (4*60+29 = 4:29)
+//  LYRICS CONFIG
+//  t = segundos (4*60+29 = 4:29)
 // ═══════════════════════════════════════
 const LYRICS = [
   { t: 4*60+29, text: 'pouring out her chest, her sweet little flowers lay wilted' },
   { t: 4*60+31, text: 'she feels their pedals sink between her fingers, leaving nothing but dried carbon' },
-  { t: 4*60+36, text: 'Grab these lavender thorns and shove them into my wrists. Maybe I'll feel something different, she yells' },
+  { t: 4*60+36, text: "Grab these lavender thorns and shove them into my wrists. Maybe I'll feel something different, she yells" },
   { t: 4*60+42, text: 'Her liquid runs across her skin, starving for more' },
   { t: 4*60+45, text: 'She continues to slam those twisted stems into her arms' },
   { t: 4*60+49, text: 'Oh god, oh god, oh god, she repeats internally' },
@@ -211,26 +215,21 @@ const SONG_END    = 7*60 + 3;
 const FADE_OUT_AT = 5*60 + 8;
 // ═══════════════════════════════════════
 
-const step1 = document.getElementById('step1');
-const step2 = document.getElementById('step2');
-const song  = document.getElementById('song');
-
+const song = document.getElementById('song');
 let started = false;
 let shownIndex = -1, currentEl = null, fadeTriggered = false, sceneDone = false;
 
 function go() {
   if (started) return;
   started = true;
-  step1.classList.add('gone');
-  step2.classList.add('active');
+  document.getElementById('step1').classList.add('gone');
+  document.getElementById('step2').classList.add('active');
   try {
     song.currentTime = SONG_START;
     song.play().catch(() => {});
   } catch(e) {}
   requestAnimationFrame(loop);
 }
-
-document.body.addEventListener('click', go);
 
 function loop() {
   const t = song.currentTime;
@@ -266,11 +265,11 @@ function showLyric(i) {
 
 function wrapChars(text) {
   return [...text].map((ch, idx) => {
-    if (ch === ' ') return '<span style="display:inline-block;width:0.3em"></span>';
-    const r1=(Math.random()*3.5-1.75).toFixed(2), r2=(Math.random()*3.5-1.75).toFixed(2);
+    if (ch === ' ') return '<span style="display:inline-block;width:0.25em"></span>';
+    const r1=(Math.random()*3-1.5).toFixed(2), r2=(Math.random()*3-1.5).toFixed(2);
     const tx1=(Math.random()*1.2-0.6).toFixed(2), ty1=(Math.random()*1.2-0.6).toFixed(2);
     const tx2=(Math.random()*1.2-0.6).toFixed(2), ty2=(Math.random()*1.2-0.6).toFixed(2);
-    const d=(idx*0.025+Math.random()*0.05).toFixed(3);
+    const d=(idx*0.02+Math.random()*0.04).toFixed(3);
     return `<span class="lyric-char" style="--r1:${r1}deg;--r2:${r2}deg;--tx1:${tx1}px;--ty1:${ty1}px;--tx2:${tx2}px;--ty2:${ty2}px;--delay:${d}s">${ch}</span>`;
   }).join('');
 }
@@ -279,8 +278,8 @@ function startJitter(el) {
   const id = setInterval(() => {
     if (!el.parentNode) { clearInterval(id); return; }
     el.querySelectorAll('.lyric-char').forEach(s => {
-      s.style.setProperty('--r1',(Math.random()*3.5-1.75).toFixed(2)+'deg');
-      s.style.setProperty('--r2',(Math.random()*3.5-1.75).toFixed(2)+'deg');
+      s.style.setProperty('--r1',(Math.random()*3-1.5).toFixed(2)+'deg');
+      s.style.setProperty('--r2',(Math.random()*3-1.5).toFixed(2)+'deg');
       s.style.setProperty('--tx1',(Math.random()*1.2-0.6).toFixed(2)+'px');
       s.style.setProperty('--ty1',(Math.random()*1.2-0.6).toFixed(2)+'px');
       s.style.setProperty('--tx2',(Math.random()*1.2-0.6).toFixed(2)+'px');
@@ -290,9 +289,10 @@ function startJitter(el) {
 }
 
 function fadeOutScene() {
-  step2.style.transition = 'opacity 0.2s ease';
-  step2.style.opacity = '0';
-  setTimeout(() => { step2.style.display = 'none'; doFlash(); }, 220);
+  const s2 = document.getElementById('step2');
+  s2.style.transition = 'opacity 0.2s ease';
+  s2.style.opacity = '0';
+  setTimeout(() => { s2.style.display = 'none'; doFlash(); }, 220);
 }
 
 function doFlash() {
