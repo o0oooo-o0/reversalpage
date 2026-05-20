@@ -14,41 +14,32 @@
     overflow: hidden;
     width: 100vw;
     height: 100vh;
-    user-select: none;
     -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
   }
 
   #step1 {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100vw;
-    height: 100vh;
-    position: absolute;
-    top: 0; left: 0;
     z-index: 10;
     cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
   }
 
-  #step1.hidden { display: none; }
-
-  #step1, #click-text {
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    outline: none;
-  }
+  #step1.gone { display: none; }
 
   #click-text {
     font-family: 'Courier New', Courier, monospace;
-    font-size: clamp(16px, 2.5vw, 26px);
+    font-size: 22px;
     color: #00ff41;
     text-shadow: 0 0 8px #00ff41, 0 0 22px #00ff41;
     animation: blink 1s step-start infinite;
     letter-spacing: 0.1em;
+    pointer-events: none;
   }
 
   @keyframes blink {
@@ -57,11 +48,10 @@
   }
 
   #step2 {
-    display: none;
-    position: absolute;
+    position: fixed;
     top: 0; left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%; height: 100%;
+    display: none;
     align-items: center;
     justify-content: center;
     z-index: 5;
@@ -123,7 +113,7 @@
     display: none;
     position: fixed;
     top: 0; left: 0;
-    width: 100vw; height: 100vh;
+    width: 100%; height: 100%;
     background: #fff;
     z-index: 100;
     pointer-events: none;
@@ -133,7 +123,7 @@
     display: none;
     position: fixed;
     top: 0; left: 0;
-    width: 100vw; height: 100vh;
+    width: 100%; height: 100%;
     align-items: center;
     justify-content: center;
     z-index: 50;
@@ -170,8 +160,6 @@
     text-shadow: 0 0 10px rgba(255,255,255,0.7);
   }
 
-  #profile-card a:hover { text-shadow: 0 0 20px #fff; }
-
   @keyframes cardIn {
     0%   { opacity: 0; transform: translateY(40px); }
     100% { opacity: 1; transform: translateY(0); }
@@ -181,7 +169,7 @@
 <body>
 
 <div id="step1">
-  <span id="click-text">[ CLICK TO CONTINUE ]</span>
+  <span id="click-text">click to continue</span>
 </div>
 
 <div id="step2">
@@ -202,12 +190,10 @@
 <audio id="song" src="embers.mp3" preload="auto"></audio>
 
 <script>
-// ═══════════════════════════════════════════════
-//  ★ LYRICS CONFIG
-//  t = seconds (4*60+29 = 4:29)
-//  Texto con comillas: usar backticks `She said "hi"`
-// ═══════════════════════════════════════════════
-const LYRICS = [
+// ═══════════════════════════════════════
+//  LYRICS CONFIG — edita aquí
+//  t = segundos  (4*60+29 = 4:29)
+// ═══════════════════════════════════════
 const LYRICS = [
   { t: 4*60+29, text: 'pouring out her chest, her sweet little flowers lay wilted' },
   { t: 4*60+31, text: 'she feels their pedals sink between her fingers, leaving nothing but dried carbon' },
@@ -220,38 +206,57 @@ const LYRICS = [
   { t: 5*60+3,  text: 'Yet she continues to wail' },
   { t: 5*60+5,  text: 'I LOVE YOU' },
 ];
-
 const SONG_START  = 4*60 + 25;
 const SONG_END    = 7*60 + 3;
 const FADE_OUT_AT = 5*60 + 8;
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 
-const song = document.getElementById('song');
+const step1 = document.getElementById('step1');
+const step2 = document.getElementById('step2');
+const song  = document.getElementById('song');
+
+let started = false;
 let shownIndex = -1, currentEl = null, fadeTriggered = false, sceneDone = false;
 
-document.getElementById('step1').addEventListener('touchend', (e) => {
-  e.preventDefault();
-  triggerStep();
-});
-document.getElementById('step1').addEventListener('click', () => {
-  triggerStep();
-});
+function go() {
+  if (started) return;
+  started = true;
 
-function triggerStep() {
-  if (document.getElementById('step1').classList.contains('hidden')) return;
-  document.getElementById('step1').classList.add('hidden');
-  document.getElementById('step2').classList.add('active');
-  song.play().then(() => { song.currentTime = SONG_START; }).catch(() => {});
+  step1.classList.add('gone');
+  step2.classList.add('active');
+
+  try {
+    song.currentTime = SONG_START;
+    song.play().catch(() => {});
+  } catch(e) {}
+
   requestAnimationFrame(loop);
 }
 
+step1.addEventListener('touchend', function(e) {
+  e.preventDefault();
+  go();
+}, { passive: false });
+
+step1.addEventListener('click', go);
+
 function loop() {
   const t = song.currentTime;
-  if (t >= SONG_END - 0.05) { song.currentTime = SONG_START; song.play(); }
+
+  if (t >= SONG_END - 0.05) {
+    song.currentTime = SONG_START;
+    song.play().catch(() => {});
+  }
+
   for (let i = shownIndex + 1; i < LYRICS.length; i++) {
     if (t >= LYRICS[i].t) { showLyric(i); shownIndex = i; }
   }
-  if (t >= FADE_OUT_AT && !fadeTriggered) { fadeTriggered = true; fadeOutScene(); }
+
+  if (t >= FADE_OUT_AT && !fadeTriggered) {
+    fadeTriggered = true;
+    fadeOutScene();
+  }
+
   if (!sceneDone) requestAnimationFrame(loop);
 }
 
@@ -297,10 +302,9 @@ function startJitter(el) {
 }
 
 function fadeOutScene() {
-  const s2 = document.getElementById('step2');
-  s2.style.transition = 'opacity 0.2s ease';
-  s2.style.opacity = '0';
-  setTimeout(() => { s2.style.display = 'none'; doFlash(); }, 220);
+  step2.style.transition = 'opacity 0.2s ease';
+  step2.style.opacity = '0';
+  setTimeout(() => { step2.style.display = 'none'; doFlash(); }, 220);
 }
 
 function doFlash() {
