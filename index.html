@@ -135,6 +135,17 @@
 
   #card-wrapper.active { display: flex; }
 
+  /* Float animation: suave, multi-axis */
+  @keyframes floatCard {
+    0%   { transform: translate(0px, 0px) rotate(0deg); }
+    20%  { transform: translate(2px, -4px) rotate(0.15deg); }
+    40%  { transform: translate(-2px, -7px) rotate(-0.1deg); }
+    55%  { transform: translate(3px, -3px) rotate(0.2deg); }
+    70%  { transform: translate(-1px, -6px) rotate(-0.15deg); }
+    85%  { transform: translate(2px, -2px) rotate(0.1deg); }
+    100% { transform: translate(0px, 0px) rotate(0deg); }
+  }
+
   #profile-card {
     background: rgba(0,0,0,0.85);
     border: 1px solid rgba(255,255,255,0.2);
@@ -149,7 +160,9 @@
       inset 0 0 30px rgba(255,255,255,0.02);
     opacity: 0;
     transform: translateY(40px);
-    animation: cardIn 0.9s cubic-bezier(0.16,1,0.3,1) 0.05s forwards;
+    animation:
+      cardIn 0.9s cubic-bezier(0.16,1,0.3,1) 0.05s forwards,
+      floatCard 6s ease-in-out 1s infinite;
     font-family: Arial, sans-serif;
     font-size: 16px;
     line-height: 2;
@@ -196,28 +209,37 @@
 <script>
 // ═══════════════════════════════════════
 //  LYRICS CONFIG
-//  t = segundos (4*60+29 = 4:29)
+//  Todos los tiempos adelantados 0.5s
 // ═══════════════════════════════════════
 const LYRICS = [
-  { t: 4*60+29, text: 'pouring out her chest, her sweet little flowers lay wilted' },
-  { t: 4*60+31, text: 'she feels their pedals sink between her fingers, leaving nothing but dried carbon' },
-  { t: 4*60+36, text: "Grab these lavender thorns and shove them into my wrists. Maybe I'll feel something different, she yells" },
-  { t: 4*60+42, text: 'Her liquid runs across her skin, starving for more' },
-  { t: 4*60+45, text: 'She continues to slam those twisted stems into her arms' },
-  { t: 4*60+49, text: 'Oh god, oh god, oh god, she repeats internally' },
-  { t: 4*60+55, text: 'Wondering how long these newfound scars will take to blossom' },
-  { t: 4*60+59, text: 'Little does she know, cutting through her own skin will find no flowers' },
-  { t: 5*60+3,  text: 'Yet she continues to wail' },
-  { t: 5*60+5,  text: 'I LOVE YOU' },
+  { t: 4*60+28.5, text: 'pouring out her chest, her sweet little flowers lay wilted' },
+  { t: 4*60+30.5, text: 'she feels their pedals sink between her fingers, leaving nothing but dried carbon' },
+  { t: 4*60+35.5, text: "Grab these lavender thorns and shove them into my wrists. Maybe I'll feel something different, she yells" },
+  { t: 4*60+41.5, text: 'Her liquid runs across her skin, starving for more' },
+  { t: 4*60+44.5, text: 'She continues to slam those twisted stems into her arms' },
+  { t: 4*60+48.5, text: 'Oh god, oh god, oh god, she repeats internally' },
+  { t: 4*60+54.5, text: 'Wondering how long these newfound scars will take to blossom' },
+  { t: 4*60+58.5, text: 'Little does she know, cutting through her own skin will find no flowers' },
+  { t: 5*60+2.5,  text: 'Yet she continues to wail' },
+  { t: 5*60+4.5,  text: 'I LOVE YOU' },
 ];
+
+// El primer lyric aparece 0.5s después del click (song empieza en SONG_START)
 const SONG_START  = 4*60 + 25;
 const SONG_END    = 7*60 + 3;
-const FADE_OUT_AT = 5*60 + 8;
+
+// "I LOVE YOU" desaparece 1s después de aparecer (~5:04.5 + 1s = 5:05.5)
+// Flash aparece a la mitad de ese segundo (~5:05s)
+// Fade del step2 dura 1s
+const LOVE_YOU_DISAPPEAR_AT = 5*60 + 5.5; // 1s después de aparecer
+const FLASH_AT              = 5*60 + 5.0; // mitad del segundo
+const FADE_OUT_AT           = 5*60 + 5.0; // fade de 1s empieza aquí
 // ═══════════════════════════════════════
 
 const song = document.getElementById('song');
 let started = false;
-let shownIndex = -1, currentEl = null, fadeTriggered = false, sceneDone = false;
+let shownIndex = -1, currentEl = null;
+let fadeDone = false, flashDone = false, sceneDone = false;
 
 function go() {
   if (started) return;
@@ -233,17 +255,41 @@ function go() {
 
 function loop() {
   const t = song.currentTime;
+
   if (t >= SONG_END - 0.05) {
     song.currentTime = SONG_START;
     song.play().catch(() => {});
   }
+
+  // Mostrar lyrics
   for (let i = shownIndex + 1; i < LYRICS.length; i++) {
     if (t >= LYRICS[i].t) { showLyric(i); shownIndex = i; }
   }
-  if (t >= FADE_OUT_AT && !fadeTriggered) {
-    fadeTriggered = true;
-    fadeOutScene();
+
+  // "I LOVE YOU" desaparece 1s después, fade out manual
+  if (t >= LOVE_YOU_DISAPPEAR_AT && currentEl && !fadeDone) {
+    fadeDone = true;
+    const el = currentEl;
+    el.classList.remove('fade-in');
+    el.classList.add('fade-out');
+    setTimeout(() => el.remove(), 450);
   }
+
+  // Fade del step2: dura 1s, empieza en FADE_OUT_AT
+  const s2 = document.getElementById('step2');
+  if (t >= FADE_OUT_AT && !s2._fadingOut) {
+    s2._fadingOut = true;
+    s2.style.transition = 'opacity 1s ease';
+    s2.style.opacity = '0';
+    setTimeout(() => { s2.style.display = 'none'; }, 1000);
+  }
+
+  // Flash aparece a mitad del segundo (FLASH_AT), tarda 1s en desaparecer
+  if (t >= FLASH_AT && !flashDone) {
+    flashDone = true;
+    doFlash();
+  }
+
   if (!sceneDone) requestAnimationFrame(loop);
 }
 
@@ -288,24 +334,26 @@ function startJitter(el) {
   }, 220);
 }
 
-function fadeOutScene() {
-  const s2 = document.getElementById('step2');
-  s2.style.transition = 'opacity 0.2s ease';
-  s2.style.opacity = '0';
-  setTimeout(() => { s2.style.display = 'none'; doFlash(); }, 220);
-}
-
 function doFlash() {
   const f = document.getElementById('flash');
-  f.style.display = 'block'; f.style.opacity = '1'; f.style.transition = 'none';
+  f.style.display = 'block';
+  f.style.opacity = '1';
+  f.style.transition = 'none';
+
+  // Flash dura visible un momento, luego fade de 1s
   setTimeout(() => {
-    f.style.transition = 'opacity 0.15s ease'; f.style.opacity = '0';
+    f.style.transition = 'opacity 1s ease';
+    f.style.opacity = '0';
     setTimeout(() => {
       f.style.display = 'none';
-      document.getElementById('card-wrapper').classList.add('active');
-      sceneDone = true;
-    }, 160);
-  }, 110);
+    }, 1000);
+  }, 80);
+
+  // Card aparece 0.2s después del flash
+  setTimeout(() => {
+    document.getElementById('card-wrapper').classList.add('active');
+    sceneDone = true;
+  }, 280);
 }
 </script>
 </body>
