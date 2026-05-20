@@ -221,42 +221,30 @@ let shownIndex = -1, currentEl = null, fadeTriggered = false, sceneDone = false;
 function go() {
   if (started) return;
   started = true;
-
   step1.classList.add('gone');
   step2.classList.add('active');
-
   try {
     song.currentTime = SONG_START;
     song.play().catch(() => {});
   } catch(e) {}
-
   requestAnimationFrame(loop);
 }
 
-step1.addEventListener('touchend', function(e) {
-  e.preventDefault();
-  go();
-}, { passive: false });
-
-step1.addEventListener('click', go);
+document.body.addEventListener('click', go);
 
 function loop() {
   const t = song.currentTime;
-
   if (t >= SONG_END - 0.05) {
     song.currentTime = SONG_START;
     song.play().catch(() => {});
   }
-
   for (let i = shownIndex + 1; i < LYRICS.length; i++) {
     if (t >= LYRICS[i].t) { showLyric(i); shownIndex = i; }
   }
-
   if (t >= FADE_OUT_AT && !fadeTriggered) {
     fadeTriggered = true;
     fadeOutScene();
   }
-
   if (!sceneDone) requestAnimationFrame(loop);
 }
 
