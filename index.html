@@ -15,9 +15,11 @@
     width: 100vw;
     height: 100vh;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
-  /* ── STEP 1 ── */
   #step1 {
     display: flex;
     align-items: center;
@@ -28,9 +30,17 @@
     top: 0; left: 0;
     z-index: 10;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   #step1.hidden { display: none; }
+
+  #step1, #click-text {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    outline: none;
+  }
 
   #click-text {
     font-family: 'Courier New', Courier, monospace;
@@ -46,7 +56,6 @@
     50%       { opacity: 0; }
   }
 
-  /* ── STEP 2: LYRICS ── */
   #step2 {
     display: none;
     position: absolute;
@@ -110,7 +119,6 @@
     100% { opacity: 0; transform: translateY(-8px); }
   }
 
-  /* ── FLASH ── */
   #flash {
     display: none;
     position: fixed;
@@ -121,7 +129,6 @@
     pointer-events: none;
   }
 
-  /* ── PROFILE CARD ── */
   #card-wrapper {
     display: none;
     position: fixed;
@@ -163,9 +170,7 @@
     text-shadow: 0 0 10px rgba(255,255,255,0.7);
   }
 
-  #profile-card a:hover {
-    text-shadow: 0 0 20px #fff;
-  }
+  #profile-card a:hover { text-shadow: 0 0 20px #fff; }
 
   @keyframes cardIn {
     0%   { opacity: 0; transform: translateY(40px); }
@@ -175,20 +180,16 @@
 </head>
 <body>
 
-<!-- STEP 1 -->
 <div id="step1">
-  <span id="click-text">click to continue.</span>
+  <span id="click-text">[ CLICK TO CONTINUE ]</span>
 </div>
 
-<!-- STEP 2 -->
 <div id="step2">
   <div id="lyrics-container"></div>
 </div>
 
-<!-- FLASH -->
 <div id="flash"></div>
 
-<!-- CARD -->
 <div id="card-wrapper">
   <div id="profile-card">
     Hi, I'm F3kel666. Current owner of reversal (<a href="https://reversal.lat" target="_blank">https://reversal.lat</a>)
@@ -198,15 +199,15 @@
   </div>
 </div>
 
-<!-- AUDIO -->
 <audio id="song" src="embers.mp3" preload="auto"></audio>
 
 <script>
 // ═══════════════════════════════════════════════
-//  ★ LYRICS CONFIG — edit timestamps and text here
-//  t = seconds (e.g. 4*60+29 = 4:29)
-//  Use backtick strings if your text has quotes: `She said "hi"`
+//  ★ LYRICS CONFIG
+//  t = seconds (4*60+29 = 4:29)
+//  Texto con comillas: usar backticks `She said "hi"`
 // ═══════════════════════════════════════════════
+const LYRICS = [
 const LYRICS = [
   { t: 4*60+29, text: 'pouring out her chest, her sweet little flowers lay wilted' },
   { t: 4*60+31, text: 'she feels their pedals sink between her fingers, leaving nothing but dried carbon' },
@@ -220,51 +221,40 @@ const LYRICS = [
   { t: 5*60+5,  text: 'I LOVE YOU' },
 ];
 
-const SONG_START  = 4*60 + 25;   // 4:25 — where song starts playing
-const SONG_END    = 7*60 + 3;    // 7:03 — where it loops back
-const FADE_OUT_AT = 5*60 + 8;    // seconds after which lyrics scene fades out
+const SONG_START  = 4*60 + 25;
+const SONG_END    = 7*60 + 3;
+const FADE_OUT_AT = 5*60 + 8;
 // ═══════════════════════════════════════════════
 
 const song = document.getElementById('song');
-let shownIndex   = -1;
-let currentEl    = null;
-let fadeTriggered = false;
-let sceneDone    = false;
+let shownIndex = -1, currentEl = null, fadeTriggered = false, sceneDone = false;
 
-// ── STEP 1 click ──
+document.getElementById('step1').addEventListener('touchend', (e) => {
+  e.preventDefault();
+  triggerStep();
+});
 document.getElementById('step1').addEventListener('click', () => {
-  document.getElementById('step1').classList.add('hidden');
-  document.getElementById('step2').classList.add('active');
-  song.currentTime = SONG_START;
-  song.play().catch(() => {});
-  requestAnimationFrame(loop);
+  triggerStep();
 });
 
-// ── MAIN LOOP ──
+function triggerStep() {
+  if (document.getElementById('step1').classList.contains('hidden')) return;
+  document.getElementById('step1').classList.add('hidden');
+  document.getElementById('step2').classList.add('active');
+  song.play().then(() => { song.currentTime = SONG_START; }).catch(() => {});
+  requestAnimationFrame(loop);
+}
+
 function loop() {
   const t = song.currentTime;
-
-  if (t >= SONG_END - 0.05) {
-    song.currentTime = SONG_START;
-    song.play();
-  }
-
+  if (t >= SONG_END - 0.05) { song.currentTime = SONG_START; song.play(); }
   for (let i = shownIndex + 1; i < LYRICS.length; i++) {
-    if (t >= LYRICS[i].t) {
-      showLyric(i);
-      shownIndex = i;
-    }
+    if (t >= LYRICS[i].t) { showLyric(i); shownIndex = i; }
   }
-
-  if (t >= FADE_OUT_AT && !fadeTriggered) {
-    fadeTriggered = true;
-    fadeOutScene();
-  }
-
+  if (t >= FADE_OUT_AT && !fadeTriggered) { fadeTriggered = true; fadeOutScene(); }
   if (!sceneDone) requestAnimationFrame(loop);
 }
 
-// ── SHOW LYRIC ──
 function showLyric(i) {
   if (currentEl) {
     const old = currentEl;
@@ -272,13 +262,11 @@ function showLyric(i) {
     old.classList.add('fade-out');
     setTimeout(() => old.remove(), 450);
   }
-
   const el = document.createElement('div');
   el.className = 'lyric-line';
   el.innerHTML = wrapChars(LYRICS[i].text);
   document.getElementById('lyrics-container').appendChild(el);
   requestAnimationFrame(() => el.classList.add('fade-in'));
-
   currentEl = el;
   startJitter(el);
 }
@@ -286,13 +274,10 @@ function showLyric(i) {
 function wrapChars(text) {
   return [...text].map((ch, idx) => {
     if (ch === ' ') return '<span style="display:inline-block;width:0.3em"></span>';
-    const r1  = (Math.random()*3.5 - 1.75).toFixed(2);
-    const r2  = (Math.random()*3.5 - 1.75).toFixed(2);
-    const tx1 = (Math.random()*1.2 - 0.6).toFixed(2);
-    const ty1 = (Math.random()*1.2 - 0.6).toFixed(2);
-    const tx2 = (Math.random()*1.2 - 0.6).toFixed(2);
-    const ty2 = (Math.random()*1.2 - 0.6).toFixed(2);
-    const d   = (idx * 0.025 + Math.random()*0.05).toFixed(3);
+    const r1=(Math.random()*3.5-1.75).toFixed(2), r2=(Math.random()*3.5-1.75).toFixed(2);
+    const tx1=(Math.random()*1.2-0.6).toFixed(2), ty1=(Math.random()*1.2-0.6).toFixed(2);
+    const tx2=(Math.random()*1.2-0.6).toFixed(2), ty2=(Math.random()*1.2-0.6).toFixed(2);
+    const d=(idx*0.025+Math.random()*0.05).toFixed(3);
     return `<span class="lyric-char" style="--r1:${r1}deg;--r2:${r2}deg;--tx1:${tx1}px;--ty1:${ty1}px;--tx2:${tx2}px;--ty2:${ty2}px;--delay:${d}s">${ch}</span>`;
   }).join('');
 }
@@ -301,35 +286,28 @@ function startJitter(el) {
   const id = setInterval(() => {
     if (!el.parentNode) { clearInterval(id); return; }
     el.querySelectorAll('.lyric-char').forEach(s => {
-      s.style.setProperty('--r1',  (Math.random()*3.5-1.75).toFixed(2)+'deg');
-      s.style.setProperty('--r2',  (Math.random()*3.5-1.75).toFixed(2)+'deg');
-      s.style.setProperty('--tx1', (Math.random()*1.2-0.6).toFixed(2)+'px');
-      s.style.setProperty('--ty1', (Math.random()*1.2-0.6).toFixed(2)+'px');
-      s.style.setProperty('--tx2', (Math.random()*1.2-0.6).toFixed(2)+'px');
-      s.style.setProperty('--ty2', (Math.random()*1.2-0.6).toFixed(2)+'px');
+      s.style.setProperty('--r1',(Math.random()*3.5-1.75).toFixed(2)+'deg');
+      s.style.setProperty('--r2',(Math.random()*3.5-1.75).toFixed(2)+'deg');
+      s.style.setProperty('--tx1',(Math.random()*1.2-0.6).toFixed(2)+'px');
+      s.style.setProperty('--ty1',(Math.random()*1.2-0.6).toFixed(2)+'px');
+      s.style.setProperty('--tx2',(Math.random()*1.2-0.6).toFixed(2)+'px');
+      s.style.setProperty('--ty2',(Math.random()*1.2-0.6).toFixed(2)+'px');
     });
   }, 220);
 }
 
-// ── FADE OUT → FLASH → CARD ──
 function fadeOutScene() {
   const s2 = document.getElementById('step2');
   s2.style.transition = 'opacity 0.2s ease';
   s2.style.opacity = '0';
-  setTimeout(() => {
-    s2.style.display = 'none';
-    doFlash();
-  }, 220);
+  setTimeout(() => { s2.style.display = 'none'; doFlash(); }, 220);
 }
 
 function doFlash() {
   const f = document.getElementById('flash');
-  f.style.display = 'block';
-  f.style.opacity = '1';
-  f.style.transition = 'none';
+  f.style.display = 'block'; f.style.opacity = '1'; f.style.transition = 'none';
   setTimeout(() => {
-    f.style.transition = 'opacity 0.15s ease';
-    f.style.opacity = '0';
+    f.style.transition = 'opacity 0.15s ease'; f.style.opacity = '0';
     setTimeout(() => {
       f.style.display = 'none';
       document.getElementById('card-wrapper').classList.add('active');
